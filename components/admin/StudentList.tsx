@@ -19,14 +19,28 @@ const estadoBadge = (cuotaEstado: string | undefined | null, tieneSusc: boolean)
   return <Badge variant="warning">Pendiente</Badge>
 }
 
+// Extraer cursos únicos de la lista
+function cursosUnicos(alumnos: AlumnoConEstado[]) {
+  const set = new Set(alumnos.map(a => a.grado))
+  return ['', ...Array.from(set).sort()]
+}
+
 export function StudentList({ alumnos }: Props) {
-  const [busqueda, setBusqueda] = useState('')
+  const [busqueda, setBusqueda]   = useState('')
+  const [cursoFiltro, setCursoFiltro] = useState('')
+  const [turnoFiltro, setTurnoFiltro] = useState('')
   const [alumnoSeleccionado, setAlumnoSeleccionado] = useState<AlumnoConEstado | null>(null)
 
-  const filtrados = alumnos.filter((a) =>
-    a.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    a.grado.toLowerCase().includes(busqueda.toLowerCase())
-  )
+  const filtrados = alumnos.filter((a) => {
+    const matchTexto =
+      a.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      a.grado.toLowerCase().includes(busqueda.toLowerCase())
+    const matchCurso = !cursoFiltro || a.grado === cursoFiltro
+    const matchTurno = !turnoFiltro || (a.turno ?? '').toLowerCase() === turnoFiltro.toLowerCase()
+    return matchTexto && matchCurso && matchTurno
+  })
+
+  const cursos = cursosUnicos(alumnos)
 
   const ahora = new Date()
   const mesActual = ahora.getMonth() + 1
@@ -34,15 +48,39 @@ export function StudentList({ alumnos }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         <input
           type="text"
-          placeholder="Buscar por nombre o grado..."
+          placeholder="Buscar por nombre..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="flex h-9 w-full max-w-sm rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          className="flex h-9 w-full max-w-xs rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
         />
-        <span className="text-sm text-slate-500">{filtrados.length} alumnos</span>
+
+        {/* Filtro por curso */}
+        <select
+          value={cursoFiltro}
+          onChange={e => setCursoFiltro(e.target.value)}
+          className="h-9 rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+        >
+          <option value="">Todos los cursos</option>
+          {cursos.filter(Boolean).map(c => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        {/* Filtro por turno */}
+        <select
+          value={turnoFiltro}
+          onChange={e => setTurnoFiltro(e.target.value)}
+          className="h-9 rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+        >
+          <option value="">Todos los turnos</option>
+          <option value="Mañana">Mañana</option>
+          <option value="Noche">Noche</option>
+        </select>
+
+        <span className="text-sm text-slate-500 ml-auto">{filtrados.length} estudiantes</span>
       </div>
 
       <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">

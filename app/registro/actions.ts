@@ -68,10 +68,22 @@ export async function registrarPagadorPublico(
   })
 
   if (authError) {
-    if (authError.message.includes('already registered')) {
-      return { ok: false, error: 'Ya existe una cuenta con ese email.' }
+    const msg = authError.message.toLowerCase()
+    if (msg.includes('already') || msg.includes('exist') || msg.includes('registered')) {
+      return { ok: false, error: 'Ya existe una cuenta con ese email. Podés ingresar desde el portal.' }
     }
-    return { ok: false, error: 'Error al crear tu cuenta. Intentá de nuevo.' }
+    return { ok: false, error: `Error al crear tu cuenta: ${authError.message}` }
+  }
+
+  // Verificar si el pagador ya fue creado en un intento anterior (registro parcial)
+  const { data: pagadorExistente } = await admin
+    .from('pagadores')
+    .select('id')
+    .eq('mail', email)
+    .maybeSingle()
+
+  if (pagadorExistente) {
+    return { ok: false, error: 'Ya existe una cuenta con ese email. Podés ingresar desde el portal.' }
   }
 
   // ── Crear pagador ──────────────────────────────────────────

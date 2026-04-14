@@ -65,7 +65,7 @@ export function RegistroForm() {
   const OPCIONES_PAGO = [
     {
       id: 'suscripcion' as TipoPago,
-      titulo: 'Débito automático mensual',
+      titulo: 'Suscripción mensual',
       badge: '⭐ Recomendado',
       precio: `${formatMonto(precios.mensual)}/mes`,
       desc: 'Se descuenta solo cada mes. No tenés que hacer nada.',
@@ -74,16 +74,16 @@ export function RegistroForm() {
     },
     {
       id: 'anual' as TipoPago,
-      titulo: 'Pago anual',
+      titulo: 'Pagar 1 año',
       badge: null,
       precio: `${formatMonto(precios.anual)}/año`,
-      desc: `Un solo pago por todo el ciclo lectivo.`,
+      desc: 'Un solo pago por todo el ciclo lectivo.',
       colorActivo: 'border-emerald-600 bg-emerald-600 text-white',
       proximamente: true,
     },
     {
       id: 'manual' as TipoPago,
-      titulo: 'Pago mensual manual',
+      titulo: 'Pago mensual',
       badge: null,
       precio: `${formatMonto(precios.mensual)}/mes`,
       desc: 'Ingresás al portal cada mes y pagás cuando quieras.',
