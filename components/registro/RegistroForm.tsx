@@ -9,12 +9,22 @@ import { Label } from '@/components/ui/label'
 import { registrarPagadorPublico } from '@/app/registro/actions'
 import { cn, formatMonto } from '@/lib/utils'
 
-const GRADOS = ['1°', '2°', '3°', '4°', '5°', '6°', '7°']
+// Cursos según turno
+const CURSOS_MANANA = [
+  '1° A', '1° B',
+  '2° A', '2° B',
+  '3° A', '3° B',
+  '4° A', '4° B',
+  '5° A', '5° B',
+  '6°',
+  '7°',
+]
+
+const CURSOS_NOCHE = ['1°', '2°', '3°']
 
 const TURNOS = [
-  { valor: 'Mañana', emoji: '🌅', desc: 'Turno mañana' },
-  { valor: 'Tarde',  emoji: '☀️', desc: 'Turno tarde'  },
-  { valor: 'Noche',  emoji: '🌙', desc: 'Turno noche'  },
+  { valor: 'Mañana', emoji: '🌅' },
+  { valor: 'Noche',  emoji: '🌙' },
 ]
 
 type TipoPago = 'suscripcion' | 'anual' | 'manual'
@@ -25,25 +35,32 @@ const PRECIOS = {
 }
 
 export function RegistroForm() {
-  const [paso, setPaso] = useState<1 | 2>(1)
-  const [exito, setExito] = useState(false)
-  const [showPass, setShowPass] = useState(false)
+  const [paso, setPaso]           = useState<1 | 2>(1)
+  const [exito, setExito]         = useState(false)
+  const [showPass, setShowPass]   = useState(false)
   const [isPending, startTransition] = useTransition()
 
   // Paso 1
-  const [nombre, setNombre]           = useState('')
-  const [email, setEmail]             = useState('')
-  const [telefono, setTelefono]       = useState('')
-  const [password, setPassword]       = useState('')
+  const [nombre,       setNombre]       = useState('')
+  const [email,        setEmail]        = useState('')
+  const [telefono,     setTelefono]     = useState('')
+  const [password,     setPassword]     = useState('')
   const [nombreAlumno, setNombreAlumno] = useState('')
-  const [grado, setGrado]             = useState('')
-  const [turno, setTurno]             = useState<string>('')
+  const [grado,        setGrado]        = useState('')
+  const [turno,        setTurno]        = useState<string>('')
 
   // Paso 2
-  const [tipoPago, setTipoPago]       = useState<TipoPago | null>(null)
+  const [tipoPago, setTipoPago] = useState<TipoPago | null>(null)
 
-  const turnoKey = turno.toLowerCase() === 'noche' ? 'nocturno' : 'diurno'
+  const turnoKey = turno === 'Noche' ? 'nocturno' : 'diurno'
   const precios  = PRECIOS[turnoKey]
+  const cursos   = turno === 'Noche' ? CURSOS_NOCHE : CURSOS_MANANA
+
+  // Cuando cambia el turno, resetear el curso si ya no aplica
+  const handleTurnoChange = (nuevoTurno: string) => {
+    setTurno(nuevoTurno)
+    setGrado('')
+  }
 
   const OPCIONES_PAGO = [
     {
@@ -52,8 +69,7 @@ export function RegistroForm() {
       badge: '⭐ Recomendado',
       precio: `${formatMonto(precios.mensual)}/mes`,
       desc: 'Se descuenta solo cada mes. No tenés que hacer nada.',
-      color: 'border-slate-900 bg-slate-900 text-white',
-      colorInactivo: 'border-slate-200 hover:border-slate-400',
+      colorActivo: 'border-slate-900 bg-slate-900 text-white',
       proximamente: true,
     },
     {
@@ -61,9 +77,8 @@ export function RegistroForm() {
       titulo: 'Pago anual',
       badge: null,
       precio: `${formatMonto(precios.anual)}/año`,
-      desc: `Un solo pago por todo el ciclo lectivo. Son ${formatMonto(precios.mensual * 12)} de valor mensual.`,
-      color: 'border-emerald-600 bg-emerald-600 text-white',
-      colorInactivo: 'border-slate-200 hover:border-slate-400',
+      desc: `Un solo pago por todo el ciclo lectivo.`,
+      colorActivo: 'border-emerald-600 bg-emerald-600 text-white',
       proximamente: true,
     },
     {
@@ -72,13 +87,11 @@ export function RegistroForm() {
       badge: null,
       precio: `${formatMonto(precios.mensual)}/mes`,
       desc: 'Ingresás al portal cada mes y pagás cuando quieras.',
-      color: 'border-slate-500 bg-slate-500 text-white',
-      colorInactivo: 'border-slate-200 hover:border-slate-400',
+      colorActivo: 'border-slate-500 bg-slate-500 text-white',
       proximamente: false,
     },
   ]
 
-  // ── Validar paso 1 ──────────────────────────────────────────
   const paso1Valido =
     nombre.trim() &&
     email.trim() &&
@@ -88,7 +101,6 @@ export function RegistroForm() {
     grado &&
     turno
 
-  // ── Enviar ──────────────────────────────────────────────────
   const handleSubmit = () => {
     if (!tipoPago) return
 
@@ -108,13 +120,10 @@ export function RegistroForm() {
         toast.error(result.error)
         return
       }
-      if (tipoPago === 'manual') {
-        setExito(true)
-      } else {
-        // MP próximamente — por ahora mostramos éxito igual
-        setExito(true)
+      if (tipoPago !== 'manual') {
         toast.info('El pago online estará disponible muy pronto. Por ahora podés usar el pago manual.')
       }
+      setExito(true)
     })
   }
 
@@ -127,16 +136,16 @@ export function RegistroForm() {
         </div>
         <h2 className="text-xl font-bold text-slate-900">¡Registro completado!</h2>
         <p className="text-slate-600">
-          Tu cuenta fue creada correctamente para <strong>{nombreAlumno}</strong>.
+          Tu cuenta fue creada para <strong>{nombreAlumno}</strong>.
         </p>
         <p className="text-sm text-slate-500">
-          Ingresá al portal con tu email y contraseña para ver el estado de tus cuotas.
+          Ingresá con tu email y contraseña para ver el estado de tus cuotas.
         </p>
         <a
           href="/cuenta"
           className="inline-flex items-center justify-center h-9 px-6 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 transition-colors"
         >
-          Ir al portal →
+          Ir a mi cuenta →
         </a>
       </div>
     )
@@ -144,26 +153,29 @@ export function RegistroForm() {
 
   return (
     <div className="space-y-6">
+
       {/* Indicador de pasos */}
       <div className="flex items-center gap-2">
         <div className={cn(
-          'h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold',
+          'h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0',
           paso === 1 ? 'bg-slate-900 text-white' : 'bg-emerald-500 text-white'
         )}>
           {paso === 1 ? '1' : '✓'}
         </div>
         <div className={cn('h-1 flex-1 rounded', paso === 2 ? 'bg-emerald-500' : 'bg-slate-200')} />
         <div className={cn(
-          'h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold',
+          'h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0',
           paso === 2 ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-400'
         )}>
           2
         </div>
       </div>
 
-      {/* ── PASO 1: Datos ── */}
+      {/* ── PASO 1 ── */}
       {paso === 1 && (
         <div className="space-y-4">
+
+          {/* Datos personales */}
           <div>
             <h2 className="font-semibold text-slate-900">Tus datos</h2>
             <p className="text-sm text-slate-500">Solo te pedimos lo necesario.</p>
@@ -206,7 +218,7 @@ export function RegistroForm() {
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="password">Contraseña para el portal</Label>
+              <Label htmlFor="password">Creá tu contraseña</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -225,16 +237,20 @@ export function RegistroForm() {
                   {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              <p className="text-xs text-slate-400">
+                La vas a usar para ingresar a tu cuenta en el portal.
+              </p>
             </div>
           </div>
 
+          {/* Datos del/la estudiante */}
           <div className="border-t border-slate-100 pt-4 space-y-3">
             <div>
-              <h2 className="font-semibold text-slate-900">Datos del alumno</h2>
+              <h2 className="font-semibold text-slate-900">Datos del/la estudiante</h2>
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="alumno">Nombre del alumno</Label>
+              <Label htmlFor="alumno">Nombre</Label>
               <Input
                 id="alumno"
                 placeholder="Martín García"
@@ -243,31 +259,17 @@ export function RegistroForm() {
               />
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="grado">Grado / Año</Label>
-              <select
-                id="grado"
-                value={grado}
-                onChange={e => setGrado(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-              >
-                <option value="">Seleccioná el grado</option>
-                {GRADOS.map(g => (
-                  <option key={g} value={g}>{g} grado</option>
-                ))}
-              </select>
-            </div>
-
+            {/* Turno primero — define los cursos disponibles */}
             <div className="space-y-2">
               <Label>Turno</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {TURNOS.map(t => (
                   <button
                     key={t.valor}
                     type="button"
-                    onClick={() => setTurno(t.valor)}
+                    onClick={() => handleTurnoChange(t.valor)}
                     className={cn(
-                      'flex flex-col items-center gap-1 rounded-lg border-2 py-3 px-2 text-sm font-medium transition-all',
+                      'flex items-center justify-center gap-2 rounded-lg border-2 py-3 px-4 text-sm font-medium transition-all',
                       turno === t.valor
                         ? 'border-slate-900 bg-slate-900 text-white'
                         : 'border-slate-200 hover:border-slate-300 text-slate-700'
@@ -278,6 +280,30 @@ export function RegistroForm() {
                   </button>
                 ))}
               </div>
+              {turno === 'Noche' && (
+                <p className="text-xs text-slate-400">
+                  El turno noche tiene 1°, 2° y 3° año.
+                </p>
+              )}
+            </div>
+
+            {/* Año — depende del turno */}
+            <div className="space-y-1">
+              <Label htmlFor="grado">Año / Curso</Label>
+              <select
+                id="grado"
+                value={grado}
+                onChange={e => setGrado(e.target.value)}
+                disabled={!turno}
+                className="flex h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {turno ? 'Seleccioná el año' : 'Primero elegí el turno'}
+                </option>
+                {cursos.map(c => (
+                  <option key={c} value={c}>{c} año</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -291,13 +317,13 @@ export function RegistroForm() {
         </div>
       )}
 
-      {/* ── PASO 2: Forma de pago ── */}
+      {/* ── PASO 2 ── */}
       {paso === 2 && (
         <div className="space-y-4">
           <div>
             <h2 className="font-semibold text-slate-900">¿Cómo querés pagar?</h2>
             <p className="text-sm text-slate-500">
-              Turno {turno} · {nombreAlumno} · {grado} grado
+              Turno {turno} · {nombreAlumno} · {grado} año
             </p>
           </div>
 
@@ -309,15 +335,17 @@ export function RegistroForm() {
                 onClick={() => setTipoPago(op.id)}
                 className={cn(
                   'w-full text-left rounded-xl border-2 p-4 transition-all',
-                  tipoPago === op.id ? op.color : op.colorInactivo
+                  tipoPago === op.id
+                    ? op.colorActivo
+                    : 'border-slate-200 hover:border-slate-300'
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={cn(
-                        'font-semibold',
-                        tipoPago === op.id ? 'text-inherit' : 'text-slate-900'
+                        'font-semibold text-sm',
+                        tipoPago !== op.id && 'text-slate-900'
                       )}>
                         {op.titulo}
                       </span>
@@ -343,15 +371,15 @@ export function RegistroForm() {
                       )}
                     </div>
                     <p className={cn(
-                      'text-sm mt-0.5',
+                      'text-xs mt-0.5',
                       tipoPago === op.id ? 'text-white/80' : 'text-slate-500'
                     )}>
                       {op.desc}
                     </p>
                   </div>
                   <div className={cn(
-                    'text-right shrink-0 font-bold',
-                    tipoPago === op.id ? 'text-white' : 'text-slate-900'
+                    'text-right shrink-0 font-bold text-sm',
+                    tipoPago !== op.id && 'text-slate-900'
                   )}>
                     {op.precio}
                   </div>
@@ -360,17 +388,22 @@ export function RegistroForm() {
             ))}
           </div>
 
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" onClick={() => setPaso(1)} className="flex-1" disabled={isPending}>
+          <div className="flex gap-2 pt-1">
+            <Button
+              variant="outline"
+              onClick={() => setPaso(1)}
+              className="flex-1"
+              disabled={isPending}
+            >
               ← Atrás
             </Button>
             <Button
-              className="flex-2 flex-1"
+              className="flex-1"
               onClick={handleSubmit}
               disabled={!tipoPago || isPending}
             >
               {isPending
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Registrando...</>
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Registrando...</>
                 : 'Registrarme'}
             </Button>
           </div>
