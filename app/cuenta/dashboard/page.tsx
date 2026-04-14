@@ -96,16 +96,8 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Encabezado mis estudiantes */}
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-slate-900">
-            Mis estudiantes
-            <span className="ml-2 text-sm font-normal text-slate-400">
-              ({alumnos.length})
-            </span>
-          </h2>
-          <DashboardClient />
-        </div>
+        {/* Encabezado mis estudiantes + banners de resultado de pago */}
+        <DashboardClient cantidadAlumnos={alumnos.length} />
 
         {/* Tarjeta por cada alumno */}
         {alumnos.map((alumno) => {
@@ -128,7 +120,6 @@ export default async function DashboardPage() {
                     <CardTitle className="text-base">{alumno.nombre}</CardTitle>
                     <p className="text-xs text-slate-500 mt-0.5">
                       {alumno.grado}{alumno.turno ? ` · Turno ${alumno.turno}` : ''}
-                      {suscripcion?.planes && ` · ${suscripcion.planes.nombre}`}
                     </p>
                   </div>
                   {esSuscripcion ? (
