@@ -48,7 +48,8 @@ export async function registrarPagadorPublico(
   const turnoNormalized = turno.toLowerCase() === 'noche' ? 'nocturno' : 'diurno'
   const tipoplan = tipoPago === 'anual' ? 'anual' : 'mensual'
 
-  const { data: plan } = await supabase
+  // Usamos admin para bypasear RLS — planes es data pública pero el usuario aún no está autenticado
+  const { data: plan } = await admin
     .from('planes')
     .select('*')
     .eq('turno', turnoNormalized)
@@ -74,7 +75,9 @@ export async function registrarPagadorPublico(
   }
 
   // ── Crear pagador ──────────────────────────────────────────
-  const { data: pagador, error: errPagador } = await supabase
+  // Usamos admin en todo el flujo de registro porque el usuario
+  // no está autenticado aún y RLS bloquearía las inserciones
+  const { data: pagador, error: errPagador } = await admin
     .from('pagadores')
     .insert({ nombre, mail: email, telefono })
     .select()
@@ -86,7 +89,7 @@ export async function registrarPagadorPublico(
   }
 
   // ── Crear alumno ───────────────────────────────────────────
-  const { data: alumno, error: errAlumno } = await supabase
+  const { data: alumno, error: errAlumno } = await admin
     .from('alumnos')
     .insert({ nombre: nombreAlumno, grado, turno, pagador_id: pagador.id, activo: true })
     .select()
@@ -97,11 +100,9 @@ export async function registrarPagadorPublico(
   }
 
   // ── Crear suscripción ──────────────────────────────────────
-  // mp_status: 'pending' hasta que MP confirme (para suscripcion/anual)
-  //            'activa' directo para pago manual
   const mpStatus = tipoPago === 'manual' ? 'activa' : 'pending'
 
-  const { data: suscripcion, error: errSusc } = await supabase
+  const { data: suscripcion, error: errSusc } = await admin
     .from('suscripciones')
     .insert({
       alumno_id:  alumno.id,
