@@ -120,8 +120,10 @@ export function RegistroForm() {
         toast.error(result.error)
         return
       }
-      if (tipoPago !== 'manual') {
-        toast.info('El pago online estará disponible muy pronto. Por ahora podés usar el pago manual.')
+      // Si MP devolvió una URL, redirigir directo al checkout
+      if (result.mpUrl) {
+        window.location.href = result.mpUrl
+        return
       }
       setExito(true)
     })
@@ -301,7 +303,7 @@ export function RegistroForm() {
                   {turno ? 'Seleccioná el año' : 'Primero elegí el turno'}
                 </option>
                 {cursos.map(c => (
-                  <option key={c} value={c}>{c} año</option>
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>
@@ -323,7 +325,7 @@ export function RegistroForm() {
           <div>
             <h2 className="font-semibold text-slate-900">¿Cómo querés pagar?</h2>
             <p className="text-sm text-slate-500">
-              Turno {turno} · {nombreAlumno} · {grado} año
+              Turno {turno} · {nombreAlumno} · {grado}
             </p>
           </div>
 

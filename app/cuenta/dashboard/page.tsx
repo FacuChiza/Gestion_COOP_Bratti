@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { LogOut, School, CheckCircle2, Clock, AlertCircle, CreditCard, Wallet } from 'lucide-react'
 import { getDashboardData, logoutAction } from '@/app/cuenta/actions'
 import { PaymentHistory } from '@/components/cuenta/PaymentHistory'
+import { DashboardClient } from '@/components/cuenta/DashboardClient'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -94,6 +95,17 @@ export default async function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Encabezado mis estudiantes */}
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-slate-900">
+            Mis estudiantes
+            <span className="ml-2 text-sm font-normal text-slate-400">
+              ({alumnos.length})
+            </span>
+          </h2>
+          <DashboardClient />
+        </div>
 
         {/* Tarjeta por cada alumno */}
         {alumnos.map((alumno) => {

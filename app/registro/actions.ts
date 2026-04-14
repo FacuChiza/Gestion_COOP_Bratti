@@ -1,11 +1,11 @@
 'use server'
 
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { crearSuscripcionMP, crearPreferenciaMP } from '@/lib/mp'
 
 export type RegistroResult =
-  | { ok: true; pagadorId: string; tipoPago: string }
+  | { ok: true; pagadorId: string; tipoPago: string; mpUrl?: string }
   | { ok: false; error: string }
 
 export async function registrarPagadorPublico(
@@ -118,6 +118,41 @@ export async function registrarPagadorPublico(
 
   if (errSusc || !suscripcion) {
     return { ok: false, error: 'Error al crear la suscripción.' }
+  }
+
+  // ── Redirigir a MP si corresponde ─────────────────────────
+  if (tipoPago === 'suscripcion') {
+    const mpData = await crearSuscripcionMP({
+      pagadorNombre: nombre,
+      pagadorEmail:  email,
+      monto:         plan.precio_por_mes,
+      planNombre:    plan.nombre,
+      suscripcionId: suscripcion.id,
+    })
+    if (mpData) {
+      await admin
+        .from('suscripciones')
+        .update({ mp_preapproval_id: mpData.id })
+        .eq('id', suscripcion.id)
+      return { ok: true, pagadorId: pagador.id, tipoPago, mpUrl: mpData.init_point }
+    }
+  }
+
+  if (tipoPago === 'anual') {
+    const mpData = await crearPreferenciaMP({
+      titulo:        plan.nombre,
+      monto:         plan.monto_total,
+      pagadorEmail:  email,
+      referencia:    suscripcion.id,
+      tipo:          'anual',
+    })
+    if (mpData) {
+      // En sandbox usar sandbox_init_point, en prod usar init_point
+      const url = process.env.NODE_ENV === 'production'
+        ? mpData.init_point
+        : mpData.sandbox_init_point
+      return { ok: true, pagadorId: pagador.id, tipoPago, mpUrl: url }
+    }
   }
 
   return { ok: true, pagadorId: pagador.id, tipoPago }

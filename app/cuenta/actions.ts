@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function loginAction(formData: FormData) {
   const supabase = await createClient()
@@ -87,4 +88,69 @@ export async function getDashboardData() {
   )
 
   return { pagador, alumnos: alumnosConCuotas }
+}
+
+// ── Agregar otro/a estudiante a una cuenta existente ─────────
+export async function agregarEstudianteAction(formData: FormData) {
+  const supabase = await createClient()
+  const admin    = createAdminClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  // Buscar pagador del usuario logueado
+  const { data: pagador } = await supabase
+    .from('pagadores')
+    .select('id')
+    .eq('mail', user.email!)
+    .maybeSingle()
+
+  if (!pagador) return { error: 'No se encontró tu cuenta de pagador' }
+
+  const nombreAlumno = (formData.get('nombre_alumno') as string).trim()
+  const grado        = formData.get('grado') as string
+  const turno        = formData.get('turno') as string
+
+  if (!nombreAlumno || !grado || !turno) {
+    return { error: 'Completá todos los campos' }
+  }
+
+  // Determinar plan según turno
+  const turnoNormalized = turno === 'Noche' ? 'nocturno' : 'diurno'
+
+  const { data: plan } = await admin
+    .from('planes')
+    .select('*')
+    .eq('turno', turnoNormalized)
+    .eq('tipo', 'mensual')
+    .single()
+
+  if (!plan) return { error: 'No se encontró el plan. Contactá a la cooperadora.' }
+
+  // Crear alumno
+  const { data: alumno, error: errAlumno } = await admin
+    .from('alumnos')
+    .insert({ nombre: nombreAlumno, grado, turno, pagador_id: pagador.id, activo: true })
+    .select()
+    .single()
+
+  if (errAlumno || !alumno) return { error: 'Error al registrar al/la estudiante' }
+
+  // Crear suscripción (manual por defecto, pueden cambiarla después)
+  const { error: errSusc } = await admin
+    .from('suscripciones')
+    .insert({
+      alumno_id:    alumno.id,
+      plan_id:      plan.id,
+      fecha_inicio: new Date().toISOString().split('T')[0],
+      estado:       'activa',
+      metodo_pago:  'efectivo',
+      tipo_pago:    'manual',
+      mp_status:    'activa',
+    })
+
+  if (errSusc) return { error: 'Error al crear la suscripción' }
+
+  revalidatePath('/cuenta/dashboard')
+  return { ok: true }
 }
