@@ -6,7 +6,10 @@
       "Bash(npm pkg:*)",
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(node node_modules/.bin/next build)",
+      "Bash(cmd /c \"npm run build\")",
+      "Bash(powershell -Command \"npm run build\")"
     ]
   }
 }
