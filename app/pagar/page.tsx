@@ -1,20 +1,33 @@
 /**
- * /pagar?alumno=<alumno_id>
+ * /pagar
  *
- * Página de paso intermedio:
- * 1. Verifica que el usuario esté autenticado y sea dueño del alumno
- * 2. Crea una preferencia de pago en MercadoPago con el total de cuotas pendientes
- * 3. Redirige al checkout de MP
+ * Dos modos:
+ *   ?alumno=<id>  → pagar cuotas de un alumno específico
+ *   ?todo=1       → pagar todas las cuotas pendientes de todos los alumnos
+ *
+ * Flujo: verifica sesión → obtiene cuotas → crea preferencia MP → muestra confirmación
  */
 
 import { redirect } from 'next/navigation'
-import { ArrowRight, CreditCard, AlertCircle, School } from 'lucide-react'
+import { ArrowRight, CreditCard, AlertCircle, School, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { crearPreferenciaMP, mpConfigurado } from '@/lib/mp'
 import { formatMonto, formatMes } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
+
+// ─── Tipos locales ────────────────────────────────────────────────────────────
+
+type CuotaConAlumno = {
+  id: string
+  mes: number
+  año: number
+  monto: number
+  estado: string
+  suscripcion_id: string
+  alumno_nombre?: string
+}
 
 // ─── Componentes de UI ───────────────────────────────────────────────────────
 
@@ -58,24 +71,23 @@ function ErrorCard({ titulo, mensaje }: { titulo: string; mensaje: string }) {
   )
 }
 
-// ─── Página principal ────────────────────────────────────────────────────────
+// ─── Página ───────────────────────────────────────────────────────────────────
 
 export default async function PagarPage({
   searchParams,
 }: {
-  searchParams: { alumno?: string }
+  searchParams: { alumno?: string; todo?: string }
 }) {
-  // 1. Validar parámetro
-  if (!searchParams.alumno) redirect('/cuenta/dashboard')
+  const modoTodo = searchParams.todo === '1'
 
-  // 2. Verificar sesión
+  if (!searchParams.alumno && !modoTodo) redirect('/cuenta/dashboard')
+
+  // ── Verificar sesión ──────────────────────────────────────────
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/cuenta')
 
-  // 3. Buscar pagador
+  // ── Buscar pagador ────────────────────────────────────────────
   const { data: pagador } = await supabase
     .from('pagadores')
     .select('id, nombre, mail')
@@ -84,15 +96,23 @@ export default async function PagarPage({
 
   if (!pagador) redirect('/cuenta/dashboard')
 
-  // 4. Verificar que el alumno pertenece al pagador
-  const { data: alumno } = await supabase
-    .from('alumnos')
-    .select('id, nombre, grado, turno, suscripciones(id, estado, tipo_pago)')
-    .eq('id', searchParams.alumno)
-    .eq('pagador_id', pagador.id)
-    .single()
+  const admin = createAdminClient()
 
-  if (!alumno) {
+  // ── Obtener alumnos del pagador ───────────────────────────────
+  const { data: alumnos } = await supabase
+    .from('alumnos')
+    .select('id, nombre, suscripciones(id, estado, tipo_pago)')
+    .eq('pagador_id', pagador.id)
+    .eq('activo', true)
+
+  if (!alumnos?.length) redirect('/cuenta/dashboard')
+
+  // ── Filtrar alumnos según modo ────────────────────────────────
+  const alumnosFiltrados = modoTodo
+    ? alumnos
+    : alumnos.filter((a) => a.id === searchParams.alumno)
+
+  if (!alumnosFiltrados.length) {
     return (
       <ErrorCard
         titulo="Alumno no encontrado"
@@ -101,24 +121,30 @@ export default async function PagarPage({
     )
   }
 
-  // 5. Traer cuotas pendientes / vencidas
-  const admin = createAdminClient()
-  const { data: rawCuotas } = await admin
-    .from('cuotas')
-    .select('*')
-    .eq('alumno_id', alumno.id)
-    .in('estado', ['pendiente', 'vencida'])
-    .order('año', { ascending: true })
-    .order('mes', { ascending: true })
+  // ── Obtener cuotas pendientes de los alumnos seleccionados ────
+  const cuotasPromises = alumnosFiltrados.map(async (alumno) => {
+    const { data } = await admin
+      .from('cuotas')
+      .select('*')
+      .eq('alumno_id', alumno.id)
+      .in('estado', ['pendiente', 'vencida'])
+      .order('año', { ascending: true })
+      .order('mes', { ascending: true })
 
-  type Cuota = { id: string; mes: number; año: number; monto: number; estado: string }
-  const cuotas = rawCuotas as Cuota[] | null
+    return (data ?? []).map((c) => ({
+      ...(c as { id: string; mes: number; año: number; monto: number; estado: string; suscripcion_id: string }),
+      alumno_nombre: alumno.nombre,
+    }))
+  })
 
-  if (!cuotas || cuotas.length === 0) redirect('/cuenta/dashboard')
+  const cuotasPorAlumno = await Promise.all(cuotasPromises)
+  const todasLasCuotas: CuotaConAlumno[] = cuotasPorAlumno.flat()
 
-  const montoTotal = cuotas.reduce((acc, c) => acc + c.monto, 0)
+  if (todasLasCuotas.length === 0) redirect('/cuenta/dashboard')
 
-  // 6. Verificar que MP esté configurado
+  const montoTotal = todasLasCuotas.reduce((acc, c) => acc + c.monto, 0)
+
+  // ── Verificar MP ──────────────────────────────────────────────
   if (!mpConfigurado()) {
     return (
       <ErrorCard
@@ -128,33 +154,45 @@ export default async function PagarPage({
     )
   }
 
-  // 7. Obtener suscripción activa para usar como referencia en el webhook
-  const suscripcionActiva = (
-    alumno.suscripciones as Array<{ id: string; estado: string; tipo_pago: string }>
-  )?.find((s) => s.estado === 'activa')
+  // ── Crear preferencia en MP ───────────────────────────────────
+  // Referencia: para 1 alumno usamos su suscripción; para "todo" usamos el pagador
+  let tituloMP: string
+  let referenciaMP: string
+  let tipoMP: 'manual' | 'anual'
 
-  if (!suscripcionActiva) {
-    return (
-      <ErrorCard
-        titulo="Sin suscripción activa"
-        mensaje="No hay una suscripción activa. Contactá a la cooperadora."
-      />
-    )
+  if (modoTodo) {
+    const cantAlumnos = alumnosFiltrados.length
+    const cantCuotas  = todasLasCuotas.length
+    tituloMP    = `${cantCuotas} cuota${cantCuotas > 1 ? 's' : ''} — ${cantAlumnos} estudiante${cantAlumnos > 1 ? 's' : ''}`
+    referenciaMP = `pagador:${pagador.id}`
+    tipoMP      = 'manual'
+  } else {
+    const alumno = alumnosFiltrados[0]
+    const suscripcionActiva = (
+      alumno.suscripciones as Array<{ id: string; estado: string; tipo_pago: string }>
+    )?.find((s) => ['activa', 'pendiente'].includes(s.estado))
+
+    if (!suscripcionActiva) {
+      return (
+        <ErrorCard
+          titulo="Sin suscripción activa"
+          mensaje="No hay una suscripción activa para este/a estudiante. Contactá a la cooperadora."
+        />
+      )
+    }
+
+    const cantCuotas = todasLasCuotas.length
+    tituloMP    = `${cantCuotas} cuota${cantCuotas > 1 ? 's' : ''} — ${alumno.nombre}`
+    referenciaMP = suscripcionActiva.id
+    tipoMP      = 'manual'
   }
 
-  // 8. Construir título descriptivo
-  const titulo =
-    cuotas.length === 1
-      ? `${formatMes(cuotas[0].mes, cuotas[0].año)} — ${alumno.nombre}`
-      : `${cuotas.length} cuotas — ${alumno.nombre}`
-
-  // 9. Crear preferencia en MP
   const mpData = await crearPreferenciaMP({
-    titulo,
-    monto: montoTotal,
+    titulo:       tituloMP,
+    monto:        montoTotal,
     pagadorEmail: pagador.mail,
-    referencia: suscripcionActiva.id,
-    tipo: 'manual',
+    referencia:   referenciaMP,
+    tipo:         tipoMP,
   })
 
   if (!mpData) {
@@ -166,14 +204,21 @@ export default async function PagarPage({
     )
   }
 
-  // 10. En dev: sandbox_init_point / En prod: init_point
   const checkoutUrl =
     process.env.NODE_ENV === 'production'
       ? mpData.init_point
       : mpData.sandbox_init_point
 
-  // 11. Mostrar pantalla de confirmación antes de redirigir
-  //     (mejor UX que redirigir directamente sin avisar)
+  // ── Agrupar cuotas por alumno para mostrar en UI ──────────────
+  const cuotasPorAlumnoUI = alumnosFiltrados
+    .map((alumno) => ({
+      nombre: alumno.nombre,
+      cuotas: todasLasCuotas.filter((c) => c.alumno_nombre === alumno.nombre),
+    }))
+    .filter((a) => a.cuotas.length > 0)
+
+  const multipleAlumnos = cuotasPorAlumnoUI.length > 1
+
   return (
     <Layout>
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -181,43 +226,60 @@ export default async function PagarPage({
         <div className="bg-slate-900 px-6 py-5 text-white">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center">
-              <CreditCard className="h-5 w-5 text-white" />
+              {multipleAlumnos
+                ? <Users className="h-5 w-5 text-white" />
+                : <CreditCard className="h-5 w-5 text-white" />
+              }
             </div>
             <div>
               <p className="font-semibold">Pagar con MercadoPago</p>
-              <p className="text-sm text-white/70">{alumno.nombre}</p>
+              <p className="text-sm text-white/70">
+                {multipleAlumnos
+                  ? `${cuotasPorAlumnoUI.length} estudiantes`
+                  : cuotasPorAlumnoUI[0]?.nombre
+                }
+              </p>
             </div>
           </div>
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Detalle de cuotas */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-              Cuotas a pagar
-            </p>
-            <div className="rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
-              {cuotas.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between px-4 py-2.5"
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`inline-block h-2 w-2 rounded-full ${
-                        c.estado === 'vencida' ? 'bg-red-400' : 'bg-amber-400'
-                      }`}
-                    />
-                    <span className="text-sm text-slate-700">
-                      {formatMes(c.mes, c.año)}
-                    </span>
-                  </div>
-                  <span className="text-sm font-medium text-slate-900">
-                    {formatMonto(c.monto)}
-                  </span>
+          {/* Detalle de cuotas por alumno */}
+          <div className="space-y-3">
+            {cuotasPorAlumnoUI.map((grupo) => (
+              <div key={grupo.nombre}>
+                {multipleAlumnos && (
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                    {grupo.nombre}
+                  </p>
+                )}
+                <div className="rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
+                  {grupo.cuotas.map((c) => (
+                    <div
+                      key={c.id}
+                      className="flex items-center justify-between px-4 py-2.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-block h-2 w-2 rounded-full ${
+                            c.estado === 'vencida' ? 'bg-red-400' : 'bg-amber-400'
+                          }`}
+                        />
+                        <span className="text-sm text-slate-700">
+                          {formatMes(c.mes, c.año)}
+                        </span>
+                        {c.estado === 'vencida' && (
+                          <span className="text-xs text-red-500 font-medium">vencida</span>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-slate-900">
+                        {formatMonto(c.monto)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
 
           {/* Total */}
@@ -228,7 +290,7 @@ export default async function PagarPage({
             </span>
           </div>
 
-          {/* Botón ir a MP */}
+          {/* Botón MP */}
           <a
             href={checkoutUrl}
             className="flex items-center justify-center gap-2 w-full h-11 rounded-xl bg-[#009EE3] hover:bg-[#0082BF] text-white font-semibold text-sm transition-colors"

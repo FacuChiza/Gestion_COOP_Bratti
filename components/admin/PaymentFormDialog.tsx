@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { formatMes, formatMonto } from '@/lib/utils'
@@ -19,26 +18,24 @@ type Props = {
 }
 
 export function PaymentFormDialog({ alumno, open, onClose }: Props) {
-  const [cuotas, setCuotas] = useState<Cuota[]>([])
+  const [cuotas, setCuotas]           = useState<Cuota[]>([])
   const [seleccionadas, setSeleccionadas] = useState<string[]>([])
-  const [descuento, setDescuento] = useState('0')
-  const [notas, setNotas] = useState('')
-  const [isPending, startTransition] = useTransition()
+  const [notas, setNotas]             = useState('')
+  const [isPending, startTransition]  = useTransition()
 
   useEffect(() => {
     if (open) {
+      setNotas('')
       getCuotasPendientesAlumno(alumno.id).then((data) => {
         setCuotas(data as Cuota[])
-        setSeleccionadas(data.map((c) => c.id))
+        setSeleccionadas(data.map((c) => c.id)) // todas pre-seleccionadas
       })
     }
   }, [open, alumno.id])
 
-  const montoBase = cuotas
+  const montoTotal = cuotas
     .filter((c) => seleccionadas.includes(c.id))
     .reduce((acc, c) => acc + c.monto, 0)
-
-  const montoFinal = montoBase - Number(descuento || 0)
 
   const toggleCuota = (id: string) => {
     setSeleccionadas((prev) =>
@@ -55,7 +52,6 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
     const formData = new FormData()
     formData.set('pagador_id', alumno.pagador_id ?? '')
     seleccionadas.forEach((id) => formData.append('cuota_ids', id))
-    formData.set('descuento', descuento)
     formData.set('notas', notas)
 
     startTransition(async () => {
@@ -63,7 +59,7 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
       if (result?.error) {
         toast.error(result.error)
       } else {
-        toast.success(`Pago registrado — ${formatMonto(montoFinal)}`)
+        toast.success(`Pago registrado — ${formatMonto(montoTotal)}`)
         onClose()
       }
     })
@@ -75,7 +71,7 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
         <DialogHeader>
           <DialogTitle>Registrar pago — {alumno.nombre}</DialogTitle>
           <DialogDescription>
-            Seleccioná las cuotas a pagar y completá los datos del cobro.
+            Seleccioná las cuotas que el/la pagador/a abona en este momento.
           </DialogDescription>
         </DialogHeader>
 
@@ -111,19 +107,6 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
             )}
           </div>
 
-          {/* Descuento */}
-          <div className="space-y-1">
-            <Label htmlFor="descuento">Descuento ($)</Label>
-            <Input
-              id="descuento"
-              type="number"
-              min="0"
-              value={descuento}
-              onChange={(e) => setDescuento(e.target.value)}
-              placeholder="0"
-            />
-          </div>
-
           {/* Notas */}
           <div className="space-y-1">
             <Label htmlFor="notas">Notas (opcional)</Label>
@@ -131,27 +114,15 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
               id="notas"
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
-              placeholder="Ej: pagó en dos partes..."
+              placeholder="Ej: pagó en dos partes, trajo el dinero el/la alumno/a..."
               rows={2}
             />
           </div>
 
-          {/* Resumen */}
-          <div className="rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 space-y-1">
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Subtotal</span>
-              <span>{formatMonto(montoBase)}</span>
-            </div>
-            {Number(descuento) > 0 && (
-              <div className="flex justify-between text-sm text-emerald-600">
-                <span>Descuento</span>
-                <span>- {formatMonto(Number(descuento))}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-semibold border-t border-slate-200 pt-1 mt-1">
-              <span>Total a cobrar</span>
-              <span>{formatMonto(montoFinal)}</span>
-            </div>
+          {/* Total */}
+          <div className="flex items-center justify-between rounded-lg bg-slate-50 border border-slate-200 px-4 py-3">
+            <span className="font-semibold text-slate-700">Total a cobrar</span>
+            <span className="text-lg font-bold text-slate-900">{formatMonto(montoTotal)}</span>
           </div>
 
           <div className="flex gap-2 justify-end">

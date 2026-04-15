@@ -40,55 +40,96 @@ export async function POST(req: NextRequest) {
       if (pago.status !== 'approved') return NextResponse.json({ ok: true })
 
       // external_reference tiene el formato "tipo:id"
-      const [tipo, referencia] = (pago.external_reference ?? '').split(':')
+      // Tipos: manual:suscripcion_id | anual:suscripcion_id | pagador:pagador_id
+      const colonIdx  = (pago.external_reference ?? '').indexOf(':')
+      const tipo      = colonIdx >= 0 ? pago.external_reference.slice(0, colonIdx) : ''
+      const referencia = colonIdx >= 0 ? pago.external_reference.slice(colonIdx + 1) : ''
 
-      if (tipo === 'manual' || tipo === 'anual') {
-        // Buscar cuota(s) por suscripcion_id o cuota_id
+      // ── Pago consolidado de todos los alumnos (pagador:id) ────
+      if (tipo === 'pagador') {
+        const { data: alumnos } = await supabase
+          .from('alumnos')
+          .select('id')
+          .eq('pagador_id', referencia)
+          .eq('activo', true)
+
+        if (!alumnos?.length) return NextResponse.json({ ok: true })
+
+        const alumnoIds = alumnos.map((a: { id: string }) => a.id)
+
         const { data: cuotas } = await supabase
           .from('cuotas')
-          .select('*, alumnos(nombre, pagadores(nombre, telefono))')
+          .select('id, monto')
+          .in('alumno_id', alumnoIds)
+          .in('estado', ['pendiente', 'vencida'])
+
+        if (cuotas && cuotas.length > 0) {
+          const cuotaIds  = cuotas.map((c: { id: string }) => c.id)
+          const montoTotal = cuotas.reduce((acc: number, c: { monto: number }) => acc + c.monto, 0)
+
+          await supabase.from('cuotas').update({ estado: 'pagada' }).in('id', cuotaIds)
+
+          await supabase.from('pagos').insert({
+            pagador_id: referencia,
+            monto: montoTotal,
+            descuento: 0,
+            fecha: new Date().toISOString().split('T')[0],
+            metodo: 'mercadopago',
+            referencia_externa: String(paymentId),
+            registrado_por: 'webhook_mp',
+          })
+
+          // WhatsApp al pagador
+          const { data: pagadorData } = await supabase
+            .from('pagadores')
+            .select('nombre, telefono')
+            .eq('id', referencia)
+            .single()
+
+          if (pagadorData) {
+            const mes = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(new Date())
+            await wspConfirmacionPago({
+              telefono: pagadorData.telefono,
+              nombrePagador: pagadorData.nombre.split(' ')[0],
+              nombreAlumno: `${alumnos.length} estudiante${alumnos.length > 1 ? 's' : ''}`,
+              mes,
+              monto: montoTotal,
+            })
+          }
+        }
+      }
+
+      // ── Pago por suscripción individual (manual / anual) ──────
+      if (tipo === 'manual' || tipo === 'anual') {
+        const { data: cuotas } = await supabase
+          .from('cuotas')
+          .select('*, alumnos(nombre, pagadores(id, nombre, telefono))')
           .eq('suscripcion_id', referencia)
           .in('estado', ['pendiente', 'vencida'])
 
         if (cuotas && cuotas.length > 0) {
-          const cuotaIds = cuotas.map((c: { id: string }) => c.id)
+          const cuotaIds  = cuotas.map((c: { id: string }) => c.id)
           const montoTotal = cuotas.reduce((acc: number, c: { monto: number }) => acc + c.monto, 0)
 
-          // Marcar cuotas como pagadas
-          await supabase
-            .from('cuotas')
-            .update({ estado: 'pagada' })
-            .in('id', cuotaIds)
+          await supabase.from('cuotas').update({ estado: 'pagada' }).in('id', cuotaIds)
 
-          // Registrar el pago en nuestra tabla
           const alumno = cuotas[0]?.alumnos as {
             nombre: string
-            pagadores: { nombre: string; telefono: string; id: string } | null
+            pagadores: { id: string; nombre: string; telefono: string } | null
           } | null
 
           if (alumno?.pagadores) {
-            const { data: pagadorData } = await supabase
-              .from('pagadores')
-              .select('id')
-              .eq('nombre', alumno.pagadores.nombre)
-              .single()
+            await supabase.from('pagos').insert({
+              pagador_id: alumno.pagadores.id,
+              monto: montoTotal,
+              descuento: 0,
+              fecha: new Date().toISOString().split('T')[0],
+              metodo: 'mercadopago',
+              referencia_externa: String(paymentId),
+              registrado_por: 'webhook_mp',
+            })
 
-            if (pagadorData) {
-              await supabase.from('pagos').insert({
-                pagador_id: pagadorData.id,
-                monto: montoTotal,
-                descuento: 0,
-                fecha: new Date().toISOString().split('T')[0],
-                metodo: 'mercadopago',
-                referencia_externa: String(paymentId),
-                registrado_por: 'webhook_mp',
-              })
-            }
-
-            // WhatsApp de confirmación
-            const mes = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' })
-              .format(new Date())
-
+            const mes = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(new Date())
             await wspConfirmacionPago({
               telefono: alumno.pagadores.telefono,
               nombrePagador: alumno.pagadores.nombre.split(' ')[0],

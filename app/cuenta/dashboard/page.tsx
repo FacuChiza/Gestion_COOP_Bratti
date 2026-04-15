@@ -81,18 +81,28 @@ export default async function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-              <div>
-                <p className="font-semibold text-red-800 text-sm">Tenés cuotas sin pagar</p>
-                <p className="text-xs text-red-600">Acercate a la cooperadora o pagá online.</p>
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
+                <div>
+                  <p className="font-semibold text-red-800 text-sm">Tenés cuotas sin pagar</p>
+                  <p className="text-xs text-red-600">Acercate a la cooperadora o pagá online.</p>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-xs text-red-400">Total</p>
+                <p className="font-bold text-red-700">{formatMonto(totalDeuda)}</p>
               </div>
             </div>
-            <div className="text-right shrink-0">
-              <p className="text-xs text-red-400">Total</p>
-              <p className="font-bold text-red-700">{formatMonto(totalDeuda)}</p>
-            </div>
+            {mpActivo && (
+              <Button className="w-full gap-2 bg-red-700 hover:bg-red-800" asChild>
+                <a href="/pagar?todo=1">
+                  <CreditCard className="h-4 w-4" />
+                  Pagar todo — {formatMonto(totalDeuda)}
+                </a>
+              </Button>
+            )}
           </div>
         )}
 
