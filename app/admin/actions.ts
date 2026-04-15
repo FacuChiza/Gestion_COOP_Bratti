@@ -39,12 +39,14 @@ export async function getAlumnosConEstado(): Promise<AlumnoConEstado[]> {
         .eq('alumno_id', alumno.id)
         .in('estado', ['pendiente', 'vencida'])
 
-      // Suscripción activa
+      // Suscripción activa (incluye 'pendiente' = MP aún no confirmó)
       const { data: suscripcion } = await supabase
         .from('suscripciones')
         .select('*, planes(*)')
         .eq('alumno_id', alumno.id)
-        .eq('estado', 'activa')
+        .in('estado', ['activa', 'pendiente'])
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle()
 
       return {
@@ -232,13 +234,15 @@ export async function altaPagadorYAlumno(formData: FormData) {
     return { error: 'Error al crear el alumno' }
   }
 
-  // Crear suscripción
+  // Crear suscripción (alta desde admin → siempre manual/efectivo)
   const { error: errorSusc } = await supabase.from('suscripciones').insert({
     alumno_id: alumno.id,
     plan_id: planId,
     fecha_inicio: new Date().toISOString().split('T')[0],
     estado: 'activa',
     metodo_pago: 'efectivo',
+    tipo_pago: 'manual',
+    mp_status: 'activa',
   })
 
   if (errorSusc) {

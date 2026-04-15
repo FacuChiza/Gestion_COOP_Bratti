@@ -334,10 +334,13 @@ export function RegistroForm() {
               <button
                 key={op.id}
                 type="button"
-                onClick={() => setTipoPago(op.id)}
+                disabled={op.proximamente}
+                onClick={() => !op.proximamente && setTipoPago(op.id)}
                 className={cn(
                   'w-full text-left rounded-xl border-2 p-4 transition-all',
-                  tipoPago === op.id
+                  op.proximamente
+                    ? 'opacity-55 cursor-not-allowed border-slate-200 bg-slate-50'
+                    : tipoPago === op.id
                     ? op.colorActivo
                     : 'border-slate-200 hover:border-slate-300'
                 )}
@@ -402,7 +405,7 @@ export function RegistroForm() {
             <Button
               className="flex-1"
               onClick={handleSubmit}
-              disabled={!tipoPago || isPending}
+              disabled={!tipoPago || isPending || !!OPCIONES_PAGO.find(o => o.id === tipoPago)?.proximamente}
             >
               {isPending
                 ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Registrando...</>

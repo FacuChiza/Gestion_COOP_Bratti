@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { crearSuscripcionMP, crearPreferenciaMP } from '@/lib/mp'
+import { crearSuscripcionMP, crearPreferenciaMP, mpConfigurado } from '@/lib/mp'
 
 export type RegistroResult =
   | { ok: true; pagadorId: string; tipoPago: string; mpUrl?: string }
@@ -31,6 +31,10 @@ export async function registrarPagadorPublico(
   }
   if (password.length < 6) {
     return { ok: false, error: 'La contraseña debe tener al menos 6 caracteres.' }
+  }
+  // Guardia: 'suscripcion' y 'anual' requieren MP configurado
+  if ((tipoPago === 'suscripcion' || tipoPago === 'anual') && !mpConfigurado()) {
+    return { ok: false, error: 'Esa modalidad de pago no está disponible todavía. Elegí "Pago mensual".' }
   }
 
   // ── Verificar que el mail no esté registrado ya ────────────

@@ -73,9 +73,11 @@ export async function getDashboardData() {
         (c) => c.estado === 'pendiente' || c.estado === 'vencida'
       ).length ?? 0
 
-      const suscripcionActiva = alumno.suscripciones?.find(
-        (s: { estado: string }) => s.estado === 'activa'
-      ) ?? null
+      // Prioridad: activa > pendiente (MP aún no confirmó) > ninguna
+      const suscripcionActiva =
+        alumno.suscripciones?.find((s: { estado: string }) => s.estado === 'activa') ??
+        alumno.suscripciones?.find((s: { estado: string }) => s.estado === 'pendiente') ??
+        null
 
       return {
         ...alumno,

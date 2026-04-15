@@ -24,15 +24,22 @@ export type Plan = {
   monto_total: number
   cantidad_meses: number
   precio_por_mes: number
+  turno?: string
+  tipo?: string
 }
+
+export type TipoPago = 'manual' | 'suscripcion' | 'anual'
 
 export type Suscripcion = {
   id: string
   alumno_id: string
   plan_id: string
   fecha_inicio: string
-  estado: string
+  estado: 'activa' | 'pendiente' | 'cancelada' | string
   metodo_pago: string
+  tipo_pago: TipoPago
+  mp_status: string | null
+  mp_preapproval_id: string | null
   created_at: string
   planes?: Plan | null
 }

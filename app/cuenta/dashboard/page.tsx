@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { LogOut, School, CheckCircle2, Clock, AlertCircle, CreditCard, Wallet } from 'lucide-react'
+import { LogOut, School, CheckCircle2, Clock, AlertCircle, CreditCard, Wallet, Minus } from 'lucide-react'
 import { getDashboardData, logoutAction } from '@/app/cuenta/actions'
 import { PaymentHistory } from '@/components/cuenta/PaymentHistory'
 import { DashboardClient } from '@/components/cuenta/DashboardClient'
@@ -104,11 +104,14 @@ export default async function DashboardPage() {
           const cuotaActual = alumno.cuota_actual as { estado: string; monto: number } | null
           const cuotasDeuda = alumno.cuotas_deuda as number
           const historial = alumno.historial as Array<{ id: string; mes: number; año: number; monto: number; estado: string }>
-          const suscripcion = alumno.suscripcion_activa as { tipo_pago?: string; mp_status?: string; planes?: { nombre: string } } | null
+          const suscripcion = alumno.suscripcion_activa as {
+            tipo_pago?: string
+            mp_status?: string
+            estado?: string
+            planes?: { nombre: string }
+          } | null
 
           const tipoPago = suscripcion?.tipo_pago ?? 'manual'
-          const esSuscripcion = tipoPago === 'suscripcion'
-
           const estadoActual = cuotaActual?.estado
 
           return (
@@ -122,10 +125,14 @@ export default async function DashboardPage() {
                       {alumno.grado}{alumno.turno ? ` · Turno ${alumno.turno}` : ''}
                     </p>
                   </div>
-                  {esSuscripcion ? (
-                    <Badge variant="success">Débito automático</Badge>
+                  {tipoPago === 'suscripcion' ? (
+                    suscripcion?.mp_status === 'activa'
+                      ? <Badge variant="success">Débito automático ✓</Badge>
+                      : <Badge variant="warning">Suscripción pendiente</Badge>
+                  ) : tipoPago === 'anual' ? (
+                    <Badge variant="secondary">Pago anual</Badge>
                   ) : (
-                    <Badge variant="secondary">Pago manual</Badge>
+                    <Badge variant="secondary">Pago mensual</Badge>
                   )}
                 </div>
               </CardHeader>
@@ -143,7 +150,9 @@ export default async function DashboardPage() {
                       ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                       : estadoActual === 'vencida'
                       ? <AlertCircle  className="h-4 w-4 text-red-500" />
-                      : <Clock        className="h-4 w-4 text-amber-500" />
+                      : estadoActual === 'pendiente'
+                      ? <Clock        className="h-4 w-4 text-amber-500" />
+                      : <Minus        className="h-4 w-4 text-slate-400" />
                     }
                     <div>
                       <p className="text-xs text-slate-500">{formatMes(mesActual, añoActual)}</p>
