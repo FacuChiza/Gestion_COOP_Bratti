@@ -3,6 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { crearSuscripcionMP, crearPreferenciaMP, mpConfigurado } from '@/lib/mp'
+import { wspBienvenida } from '@/lib/twilio'
+import { emailBienvenida } from '@/lib/email'
 
 export type RegistroResult =
   | { ok: true; pagadorId: string; tipoPago: string; mpUrl?: string }
@@ -169,6 +171,26 @@ export async function registrarPagadorPublico(
         : mpData.sandbox_init_point
       return { ok: true, pagadorId: pagador.id, tipoPago, mpUrl: url }
     }
+  }
+
+  // ── Bienvenida (solo pago manual: los de MP ven la pantalla de MP) ──
+  if (tipoPago === 'manual') {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+
+    if (telefono) {
+      await wspBienvenida({
+        telefono,
+        nombrePagador: nombre.split(' ')[0],
+        nombreAlumno:  nombreAlumno,
+        portalUrl:     `${appUrl}/cuenta`,
+      })
+    }
+
+    await emailBienvenida({
+      mail:          email,
+      nombrePagador: nombre,
+      nombreAlumno:  nombreAlumno,
+    })
   }
 
   return { ok: true, pagadorId: pagador.id, tipoPago }

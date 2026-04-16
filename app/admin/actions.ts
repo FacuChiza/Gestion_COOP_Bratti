@@ -3,6 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { wspConfirmacionPago } from '@/lib/twilio'
+import { enviarRecibo } from '@/lib/email'
+import { formatMes } from '@/lib/utils'
 import type { AlumnoConEstado } from '@/types'
 
 // ─── Datos para el panel ──────────────────────────────────────────────────────
@@ -165,6 +168,54 @@ export async function registrarPago(formData: FormData) {
     .from('cuotas')
     .update({ estado: 'pagada' })
     .in('id', cuotaIds)
+
+  // ── Notificaciones al pagador ──────────────────────────────
+  const { data: pagadorInfo } = await admin
+    .from('pagadores')
+    .select('nombre, telefono, mail')
+    .eq('id', pagadorId)
+    .single()
+
+  // Traer detalles de cuotas para el recibo
+  type CuotaDetalle = { mes: number; año: number; monto: number; alumnos: { nombre: string } | null }
+  const { data: rawDetalle } = await admin
+    .from('cuotas')
+    .select('*, alumnos(nombre)')
+    .in('id', cuotaIds)
+  const cuotasDetalle = rawDetalle as unknown as CuotaDetalle[] | null
+
+  if (pagadorInfo && cuotasDetalle?.length) {
+    const mesNombre = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(new Date())
+
+    const nombresAlumnos = [...new Set(
+      cuotasDetalle.map(c => c.alumnos?.nombre).filter(Boolean) as string[]
+    )]
+
+    if (pagadorInfo.telefono) {
+      await wspConfirmacionPago({
+        telefono:      pagadorInfo.telefono,
+        nombrePagador: pagadorInfo.nombre.split(' ')[0],
+        nombreAlumno:  nombresAlumnos.join(' y '),
+        mes:           mesNombre,
+        monto:         montoTotal,
+      })
+    }
+
+    if (pagadorInfo.mail) {
+      await enviarRecibo({
+        mail:          pagadorInfo.mail,
+        nombrePagador: pagadorInfo.nombre,
+        nombreAlumno:  nombresAlumnos,
+        cuotas: cuotasDetalle.map(c => ({
+          mes:   formatMes(c.mes, c.año),
+          monto: c.monto,
+        })),
+        montoTotal,
+        metodoPago: 'efectivo',
+        nroRecibo:  pago.id,
+      })
+    }
+  }
 
   revalidatePath('/admin')
   return { success: true, pagoId: pago.id }
