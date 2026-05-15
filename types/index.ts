@@ -4,6 +4,7 @@ export type Pagador = {
   dni: string | null
   telefono: string | null
   mail: string
+  notas: string | null
   created_at: string
 }
 
@@ -14,6 +15,7 @@ export type Alumno = {
   turno: string | null
   pagador_id: string | null
   activo: boolean
+  notas: string | null
   created_at: string
   pagadores?: Pagador | null
 }
@@ -67,6 +69,10 @@ export type Pago = {
   referencia_externa: string | null
   registrado_por: string | null
   notas: string | null
+  anulado: boolean
+  motivo_anulacion: string | null
+  anulado_at: string | null
+  anulado_por: string | null
   created_at: string
 }
 
@@ -74,4 +80,9 @@ export type AlumnoConEstado = Alumno & {
   cuota_actual: Cuota | null
   cuotas_deuda: number
   suscripcion_activa: Suscripcion | null
+}
+
+export type ConfiguracionItem = {
+  clave: string
+  valor: string
 }

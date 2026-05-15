@@ -3,7 +3,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { crearSuscripcionMP, crearPreferenciaMP, mpConfigurado } from '@/lib/mp'
-import { wspBienvenida } from '@/lib/twilio'
 import { emailBienvenida } from '@/lib/email'
 
 export type RegistroResult =
@@ -173,19 +172,10 @@ export async function registrarPagadorPublico(
     }
   }
 
-  // ── Bienvenida (solo pago manual: los de MP ven la pantalla de MP) ──
+  // ── Bienvenida (solo email para evitar saturar al pagador) ──
+  // Política: minimizar notificaciones — solo email de bienvenida.
+  // El WhatsApp se reserva para confirmaciones de pago y alertas críticas.
   if (tipoPago === 'manual') {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-
-    if (telefono) {
-      await wspBienvenida({
-        telefono,
-        nombrePagador: nombre.split(' ')[0],
-        nombreAlumno:  nombreAlumno,
-        portalUrl:     `${appUrl}/cuenta`,
-      })
-    }
-
     await emailBienvenida({
       mail:          email,
       nombrePagador: nombre,

@@ -67,11 +67,23 @@ export async function POST(req: NextRequest) {
         const montoTotal = cuotas.reduce((acc, c) => acc + c.monto, 0)
 
         await supabase.from('cuotas').update({ estado: 'pagada' }).in('id', cuotaIds)
-        await supabase.from('pagos').insert({
-          pagador_id: referencia, monto: montoTotal, descuento: 0,
-          fecha: new Date().toISOString().split('T')[0],
-          metodo: 'mercadopago', referencia_externa: String(paymentId), registrado_por: 'webhook_mp',
-        })
+
+        // Crear pago y vincularlo con las cuotas saldadas (trazabilidad)
+        const { data: pagoCreado } = await supabase
+          .from('pagos')
+          .insert({
+            pagador_id: referencia, monto: montoTotal, descuento: 0,
+            fecha: new Date().toISOString().split('T')[0],
+            metodo: 'mercadopago', referencia_externa: String(paymentId), registrado_por: 'webhook_mp',
+          })
+          .select('id')
+          .single()
+
+        if (pagoCreado) {
+          await supabase.from('pagos_cuotas').insert(
+            cuotaIds.map((cuotaId) => ({ pago_id: pagoCreado.id, cuota_id: cuotaId }))
+          )
+        }
 
         const { data: pagadorData } = await supabase
           .from('pagadores')
@@ -104,6 +116,7 @@ export async function POST(req: NextRequest) {
             montoTotal,
             metodoPago: 'mercadopago',
             nroRecibo: String(paymentId),
+            pagadorId: referencia,
           })
         }
       }
@@ -130,11 +143,22 @@ export async function POST(req: NextRequest) {
         const alumno = cuotas[0].alumnos
 
         if (alumno?.pagadores) {
-          await supabase.from('pagos').insert({
-            pagador_id: alumno.pagadores.id, monto: montoTotal, descuento: 0,
-            fecha: new Date().toISOString().split('T')[0],
-            metodo: 'mercadopago', referencia_externa: String(paymentId), registrado_por: 'webhook_mp',
-          })
+          // Crear pago y vincularlo con las cuotas saldadas
+          const { data: pagoCreado } = await supabase
+            .from('pagos')
+            .insert({
+              pagador_id: alumno.pagadores.id, monto: montoTotal, descuento: 0,
+              fecha: new Date().toISOString().split('T')[0],
+              metodo: 'mercadopago', referencia_externa: String(paymentId), registrado_por: 'webhook_mp',
+            })
+            .select('id')
+            .single()
+
+          if (pagoCreado) {
+            await supabase.from('pagos_cuotas').insert(
+              cuotaIds.map((cuotaId) => ({ pago_id: pagoCreado.id, cuota_id: cuotaId }))
+            )
+          }
 
           const mesNombre = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(new Date())
 
@@ -159,6 +183,7 @@ export async function POST(req: NextRequest) {
             montoTotal,
             metodoPago: 'mercadopago',
             nroRecibo: String(paymentId),
+            pagadorId: alumno.pagadores.id,
           })
         }
       }
@@ -190,7 +215,7 @@ export async function POST(req: NextRequest) {
       if (preapproval.status === 'authorized' && body.action === 'payment.created') {
         const { data: suscripcion } = await supabase
           .from('suscripciones')
-          .select('*, alumno_id, alumnos(nombre, pagadores(nombre, telefono, mail)), planes(precio_por_mes, nombre)')
+          .select('*, alumno_id, alumnos(nombre, pagadores(id, nombre, telefono, mail)), planes(precio_por_mes, nombre)')
           .eq('mp_preapproval_id', preapprovalId)
           .single()
 
@@ -199,19 +224,45 @@ export async function POST(req: NextRequest) {
           const mesNum = ahora.getMonth() + 1
           const año    = ahora.getFullYear()
 
-          // Marcar cuota del mes como pagada
-          await supabase
+          // Marcar cuota del mes como pagada y capturar su id para pagos_cuotas
+          const { data: cuotaActualizada } = await supabase
             .from('cuotas')
             .update({ estado: 'pagada' })
             .eq('alumno_id', suscripcion.alumno_id)
             .eq('mes', mesNum)
             .eq('año', año)
+            .select('id')
+            .maybeSingle()
 
-          type AlumnoSusc = { nombre: string; pagadores: { nombre: string; telefono: string; mail: string } | null }
+          type AlumnoSusc = { nombre: string; pagadores: { id: string; nombre: string; telefono: string; mail: string } | null }
           const alumno = suscripcion.alumnos as AlumnoSusc | null
           const monto  = suscripcion.planes?.precio_por_mes ?? 0
 
           if (alumno?.pagadores) {
+            // Registrar el pago automático en la tabla pagos
+            // (antes no se hacía → quedaba sin trazabilidad contable)
+            const { data: pagoCreado } = await supabase
+              .from('pagos')
+              .insert({
+                pagador_id: alumno.pagadores.id,
+                monto,
+                descuento: 0,
+                fecha: ahora.toISOString().split('T')[0],
+                metodo: 'mercadopago',
+                referencia_externa: `DB-${preapprovalId}-${año}${String(mesNum).padStart(2, '0')}`,
+                registrado_por: 'webhook_mp',
+                notas: 'Débito automático MP',
+              })
+              .select('id')
+              .single()
+
+            if (pagoCreado && cuotaActualizada) {
+              await supabase.from('pagos_cuotas').insert({
+                pago_id:  pagoCreado.id,
+                cuota_id: cuotaActualizada.id,
+              })
+            }
+
             const mesNombre = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(ahora)
 
             // WhatsApp débito automático
@@ -232,6 +283,7 @@ export async function POST(req: NextRequest) {
               montoTotal: monto,
               metodoPago: 'mercadopago',
               nroRecibo: `DB-${preapprovalId}-${año}${String(mesNum).padStart(2, '0')}`,
+              pagadorId: alumno.pagadores.id,
             })
           }
         }

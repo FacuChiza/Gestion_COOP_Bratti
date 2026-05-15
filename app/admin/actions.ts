@@ -19,10 +19,11 @@ export async function getAlumnosConEstado(): Promise<AlumnoConEstado[]> {
   const mesActual = ahora.getMonth() + 1
   const añoActual = ahora.getFullYear()
 
+  // Devolvemos también inactivos: la UI los oculta por defecto pero deja
+  // un toggle para verlos y reactivarlos.
   const { data: alumnos, error } = await admin
     .from('alumnos')
     .select('*, pagadores(*)')
-    .eq('activo', true)
     .order('nombre')
 
   if (error || !alumnos) return []
@@ -125,18 +126,40 @@ export async function registrarPago(formData: FormData) {
   const pagadorId = formData.get('pagador_id') as string
   const cuotaIds  = formData.getAll('cuota_ids') as string[]
   const notas     = formData.get('notas') as string | null
+  const descuentoRaw = formData.get('descuento') as string | null
+  const metodoForm = (formData.get('metodo') as string | null) ?? 'efectivo'
+  const metodo = ['efectivo', 'transferencia', 'mercadopago'].includes(metodoForm) ? metodoForm : 'efectivo'
 
   if (!pagadorId || cuotaIds.length === 0) {
     return { error: 'Faltan datos requeridos' }
   }
 
-  // Calcular monto total de las cuotas seleccionadas
+  // Calcular monto bruto y aplicar descuento (si existe)
   const { data: cuotas } = await admin
     .from('cuotas')
     .select('monto')
     .in('id', cuotaIds)
 
-  const montoTotal = cuotas?.reduce((acc, c) => acc + c.monto, 0) ?? 0
+  const montoBruto = cuotas?.reduce((acc, c) => acc + c.monto, 0) ?? 0
+  let descuento = Number(descuentoRaw ?? 0)
+  if (isNaN(descuento) || descuento < 0) descuento = 0
+
+  // Tope: leemos descuento_maximo_porcentaje desde configuracion
+  const { data: conf } = await admin
+    .from('configuracion')
+    .select('valor')
+    .eq('clave', 'descuento_maximo_porcentaje')
+    .maybeSingle()
+  const topePct = conf?.valor ? Number(conf.valor) : 100
+  const topeAbs = (montoBruto * topePct) / 100
+  if (descuento > topeAbs) {
+    return { error: `El descuento supera el máximo permitido (${topePct}% = ${topeAbs.toFixed(0)})` }
+  }
+  if (descuento > montoBruto) {
+    return { error: 'El descuento no puede ser mayor al total' }
+  }
+
+  const montoTotal = montoBruto - descuento
 
   // Crear el pago
   const { data: pago, error: errorPago } = await admin
@@ -144,9 +167,9 @@ export async function registrarPago(formData: FormData) {
     .insert({
       pagador_id:  pagadorId,
       monto:       montoTotal,
-      descuento:   0,
+      descuento,
       fecha:       new Date().toISOString().split('T')[0],
-      metodo:      'efectivo',
+      metodo,
       registrado_por: 'admin',
       notas:       notas || null,
     })
@@ -213,6 +236,7 @@ export async function registrarPago(formData: FormData) {
         montoTotal,
         metodoPago: 'efectivo',
         nroRecibo:  pago.id,
+        pagadorId,
       })
     }
   }
@@ -297,6 +321,42 @@ export async function altaPagadorYAlumno(formData: FormData) {
   return { success: true }
 }
 
+// ─── Actualizar precio de un plan ────────────────────────────────────────────
+// IMPORTANTE: en el schema, planes.precio_por_mes es una columna GENERATED
+// (monto_total / cantidad_meses). Por eso solo actualizamos monto_total y
+// cantidad_meses; el precio_por_mes se recalcula automáticamente en Postgres.
+
+export async function actualizarPrecio(formData: FormData) {
+  const admin = createAdminClient()
+
+  const planId        = formData.get('plan_id')        as string
+  const montoTotal    = Number(formData.get('monto_total'))
+  const cantidadMeses = Number(formData.get('cantidad_meses'))
+
+  if (!planId) {
+    return { error: 'Plan inválido' }
+  }
+  if (isNaN(montoTotal) || montoTotal <= 0) {
+    return { error: 'El monto total debe ser mayor a 0' }
+  }
+  if (isNaN(cantidadMeses) || cantidadMeses <= 0) {
+    return { error: 'La cantidad de meses debe ser mayor a 0' }
+  }
+
+  const { error } = await admin
+    .from('planes')
+    .update({ monto_total: montoTotal, cantidad_meses: cantidadMeses })
+    .eq('id', planId)
+
+  if (error) {
+    console.error('[actualizarPrecio]', error)
+    return { error: 'Error al actualizar el plan' }
+  }
+
+  revalidatePath('/admin')
+  return { success: true }
+}
+
 // ─── Simulación de cron mensual ───────────────────────────────────────────────
 
 export async function ejecutarCronMensual() {
@@ -362,3 +422,342 @@ export async function ejecutarCronMensual() {
   revalidatePath('/admin')
   return { success: true, cuotasGeneradas, cuotasVencidas }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//   ADMIN AVANZADO — operaciones que un directivo necesita poder hacer
+//   sin pedir ayuda a un programador.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── CONFIGURACIÓN GENERAL (clave/valor) ─────────────────────────────────────
+
+export async function getConfiguracion() {
+  const admin = createAdminClient()
+  const { data } = await admin.from('configuracion').select('*').order('clave')
+  return data ?? []
+}
+
+export async function actualizarConfiguracion(formData: FormData) {
+  const admin = createAdminClient()
+  const clave = formData.get('clave') as string
+  const valor = (formData.get('valor') as string ?? '').trim()
+
+  if (!clave) return { error: 'Clave inválida' }
+  if (!valor) return { error: 'El valor no puede estar vacío' }
+
+  // Validaciones específicas por clave conocida
+  const numericKeys = ['meses_alerta_deuda', 'descuento_maximo_porcentaje', 'dia_vencimiento']
+  if (numericKeys.includes(clave)) {
+    const n = Number(valor)
+    if (isNaN(n) || n < 0) return { error: 'Debe ser un número mayor o igual a 0' }
+    if (clave === 'descuento_maximo_porcentaje' && n > 100) {
+      return { error: 'El porcentaje no puede ser mayor a 100' }
+    }
+    if (clave === 'dia_vencimiento' && (n < 1 || n > 28)) {
+      return { error: 'El día debe estar entre 1 y 28' }
+    }
+  }
+
+  const { error } = await admin
+    .from('configuracion')
+    .upsert({ clave, valor }, { onConflict: 'clave' })
+
+  if (error) {
+    console.error('[actualizarConfiguracion]', error)
+    return { error: 'Error al guardar' }
+  }
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+// ─── EDITAR ALUMNO ───────────────────────────────────────────────────────────
+
+export async function editarAlumno(formData: FormData) {
+  const admin = createAdminClient()
+  const alumnoId = formData.get('alumno_id') as string
+  const nombre   = (formData.get('nombre') as string ?? '').trim()
+  const grado    = (formData.get('grado')  as string ?? '').trim()
+  const turno    = (formData.get('turno')  as string ?? '').trim() || null
+  const notas    = (formData.get('notas')  as string ?? '').trim() || null
+
+  if (!alumnoId || !nombre || !grado) {
+    return { error: 'Nombre y grado son obligatorios' }
+  }
+
+  const { error } = await admin
+    .from('alumnos')
+    .update({ nombre, grado, turno, notas })
+    .eq('id', alumnoId)
+
+  if (error) {
+    console.error('[editarAlumno]', error)
+    return { error: 'Error al actualizar el alumno' }
+  }
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+export async function cambiarEstadoAlumno(formData: FormData) {
+  const admin = createAdminClient()
+  const alumnoId = formData.get('alumno_id') as string
+  const activo   = formData.get('activo') === 'true'
+
+  if (!alumnoId) return { error: 'Alumno inválido' }
+
+  const { error } = await admin
+    .from('alumnos')
+    .update({ activo })
+    .eq('id', alumnoId)
+
+  if (error) return { error: 'Error al cambiar el estado' }
+
+  // Si se desactiva, también pausamos su suscripción para que el cron deje
+  // de generar aportes nuevos.
+  if (!activo) {
+    await admin
+      .from('suscripciones')
+      .update({ estado: 'cancelada' })
+      .eq('alumno_id', alumnoId)
+      .eq('estado', 'activa')
+  }
+
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+// ─── EDITAR PAGADOR ──────────────────────────────────────────────────────────
+
+export async function editarPagador(formData: FormData) {
+  const admin = createAdminClient()
+  const pagadorId = formData.get('pagador_id') as string
+  const nombre    = (formData.get('nombre')   as string ?? '').trim()
+  const dni       = (formData.get('dni')      as string ?? '').trim() || null
+  const telefono  = (formData.get('telefono') as string ?? '').trim() || null
+  const mail      = (formData.get('mail')     as string ?? '').trim().toLowerCase()
+  const notas     = (formData.get('notas')    as string ?? '').trim() || null
+
+  if (!pagadorId || !nombre || !mail) {
+    return { error: 'Nombre y mail son obligatorios' }
+  }
+
+  // Si cambia el mail, también lo actualizamos en Supabase Auth para que
+  // RLS siga funcionando (las políticas matchean por auth.email()).
+  const { data: pagadorActual } = await admin
+    .from('pagadores')
+    .select('mail')
+    .eq('id', pagadorId)
+    .single()
+
+  if (pagadorActual && pagadorActual.mail !== mail) {
+    // Buscar el user de auth por el mail viejo
+    const { data: usuarios } = await admin.auth.admin.listUsers()
+    const user = usuarios?.users.find((u) => u.email === pagadorActual.mail)
+    if (user) {
+      const { error: errAuth } = await admin.auth.admin.updateUserById(user.id, { email: mail })
+      if (errAuth) {
+        return { error: `No se pudo actualizar el email de la cuenta: ${errAuth.message}` }
+      }
+    }
+  }
+
+  const { error } = await admin
+    .from('pagadores')
+    .update({ nombre, dni, telefono, mail, notas })
+    .eq('id', pagadorId)
+
+  if (error) {
+    console.error('[editarPagador]', error)
+    return { error: 'Error al actualizar el pagador' }
+  }
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+// ─── ANULAR PAGO (soft delete con auditoría) ─────────────────────────────────
+
+export async function anularPago(formData: FormData) {
+  const admin = createAdminClient()
+  const pagoId = formData.get('pago_id') as string
+  const motivo = (formData.get('motivo') as string ?? '').trim()
+
+  if (!pagoId) return { error: 'Pago inválido' }
+  if (!motivo) return { error: 'Indicá un motivo de anulación (obligatorio para auditoría)' }
+
+  // Buscar las cuotas que saldó este pago para revertirlas a "vencida"
+  const { data: vinculos } = await admin
+    .from('pagos_cuotas')
+    .select('cuota_id')
+    .eq('pago_id', pagoId)
+
+  const cuotaIds = (vinculos ?? []).map((v) => v.cuota_id)
+
+  // Marcar pago como anulado (no se borra de la base)
+  const { error: errPago } = await admin
+    .from('pagos')
+    .update({
+      anulado: true,
+      motivo_anulacion: motivo,
+      anulado_at: new Date().toISOString(),
+      anulado_por: 'admin',
+    })
+    .eq('id', pagoId)
+
+  if (errPago) {
+    console.error('[anularPago]', errPago)
+    return { error: 'Error al anular el pago' }
+  }
+
+  // Revertir cuotas saldadas a "vencida" para que el alumno aparezca
+  // de nuevo como con aporte pendiente.
+  if (cuotaIds.length > 0) {
+    await admin
+      .from('cuotas')
+      .update({ estado: 'vencida' })
+      .in('id', cuotaIds)
+  }
+
+  revalidatePath('/admin')
+  return { success: true, cuotasRevertidas: cuotaIds.length }
+}
+
+// ─── CAMBIAR PLAN DE UN ALUMNO ───────────────────────────────────────────────
+// Estrategia: cancelamos la suscripción activa actual y creamos una nueva
+// con el plan elegido. Los aportes ya generados (cuotas pendientes/vencidas)
+// NO se modifican — el cambio aplica desde el próximo aporte que genere el cron.
+
+export async function cambiarPlanAlumno(formData: FormData) {
+  const admin = createAdminClient()
+  const alumnoId  = formData.get('alumno_id')  as string
+  const nuevoPlan = formData.get('plan_id')    as string
+
+  if (!alumnoId || !nuevoPlan) return { error: 'Faltan datos' }
+
+  // Verificar que el plan exista
+  const { data: plan } = await admin
+    .from('planes')
+    .select('id, tipo')
+    .eq('id', nuevoPlan)
+    .maybeSingle()
+
+  if (!plan) return { error: 'Plan inexistente' }
+
+  // Cancelar suscripciones activas/pendientes anteriores
+  await admin
+    .from('suscripciones')
+    .update({ estado: 'cancelada' })
+    .eq('alumno_id', alumnoId)
+    .in('estado', ['activa', 'pendiente'])
+
+  // Crear la nueva suscripción
+  const { error } = await admin.from('suscripciones').insert({
+    alumno_id:    alumnoId,
+    plan_id:      nuevoPlan,
+    fecha_inicio: new Date().toISOString().split('T')[0],
+    estado:       'activa',
+    metodo_pago:  'efectivo',
+    tipo_pago:    plan.tipo === 'anual' ? 'anual' : 'manual',
+    mp_status:    'activa',
+  })
+
+  if (error) {
+    console.error('[cambiarPlanAlumno]', error)
+    return { error: 'Error al crear la nueva suscripción' }
+  }
+
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+// ─── LISTADO DE PAGOS PARA UI (con detalle de cuotas saldadas) ───────────────
+
+export async function getPagosRecientes(opts?: {
+  incluirAnulados?: boolean
+  limit?: number
+}) {
+  const admin = createAdminClient()
+  const limit = opts?.limit ?? 100
+
+  let query = admin
+    .from('pagos')
+    .select('*, pagadores(nombre, mail, telefono)')
+    .order('fecha', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (!opts?.incluirAnulados) {
+    query = query.eq('anulado', false)
+  }
+
+  const { data: pagos } = await query
+  if (!pagos || pagos.length === 0) return []
+
+  // Detalle de cuotas saldadas por cada pago
+  const pagoIds = pagos.map((p) => p.id)
+  type Vinculo = {
+    pago_id: string
+    cuotas: { mes: number; año: number; alumnos: { nombre: string } | null } | null
+  }
+  const { data: vinculos } = await admin
+    .from('pagos_cuotas')
+    .select('pago_id, cuotas(mes, año, alumnos(nombre))')
+    .in('pago_id', pagoIds)
+
+  const detallePorPago = new Map<string, Array<{ mes: number; año: number; alumno: string }>>()
+  for (const v of (vinculos as unknown as Vinculo[] | null) ?? []) {
+    if (!v.cuotas) continue
+    const arr = detallePorPago.get(v.pago_id) ?? []
+    arr.push({
+      mes: v.cuotas.mes,
+      año: v.cuotas.año,
+      alumno: v.cuotas.alumnos?.nombre ?? '',
+    })
+    detallePorPago.set(v.pago_id, arr)
+  }
+
+  return pagos.map((p) => ({
+    ...p,
+    cuotas_detalle: detallePorPago.get(p.id) ?? [],
+  }))
+}
+
+// ─── GENERAR APORTE MANUAL (fuera del cron) ──────────────────────────────────
+
+export async function generarAporteManual(formData: FormData) {
+  const admin = createAdminClient()
+  const alumnoId = formData.get('alumno_id') as string
+  const mes      = Number(formData.get('mes'))
+  const año      = Number(formData.get('año'))
+  const monto    = Number(formData.get('monto'))
+
+  if (!alumnoId || !mes || !año || !monto) {
+    return { error: 'Faltan datos' }
+  }
+  if (mes < 1 || mes > 12) return { error: 'Mes inválido' }
+  if (monto <= 0) return { error: 'El monto debe ser mayor a 0' }
+
+  // Buscar la suscripción activa para vincular
+  const { data: susc } = await admin
+    .from('suscripciones')
+    .select('id')
+    .eq('alumno_id', alumnoId)
+    .eq('estado', 'activa')
+    .maybeSingle()
+
+  if (!susc) return { error: 'El alumno no tiene una suscripción activa' }
+
+  const { error } = await admin.from('cuotas').insert({
+    alumno_id: alumnoId,
+    suscripcion_id: susc.id,
+    mes, año, monto,
+    estado: 'pendiente',
+  })
+
+  if (error) {
+    // El UNIQUE(alumno_id, mes, año) puede chocar
+    if (error.code === '23505') return { error: 'Ya existe un aporte para ese mes/año' }
+    return { error: 'Error al crear el aporte' }
+  }
+
+  revalidatePath('/admin')
+  return { success: true }
+}
+

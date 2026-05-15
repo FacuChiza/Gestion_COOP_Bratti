@@ -35,7 +35,7 @@ export function DashboardClient({ cantidadAlumnos }: Props) {
           <div className="flex-1">
             <p className="font-semibold text-emerald-800 text-sm">¡Pago exitoso! 🎉</p>
             <p className="text-xs text-emerald-600">
-              Tu pago fue procesado. Las cuotas pueden tardar unos minutos en actualizarse.
+              Tu aporte fue procesado. Los aportes pueden tardar unos minutos en actualizarse.
             </p>
           </div>
           <button

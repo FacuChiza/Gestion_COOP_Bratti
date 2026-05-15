@@ -68,11 +68,17 @@ export async function crearPreferenciaMP(params: {
   monto: number
   pagadorEmail: string
   referencia: string       // suscripcion_id o cuota_id
-  tipo: 'anual' | 'manual'
+  tipo: 'anual' | 'manual' | 'pagador'
+  /**
+   * URL base a la que MP debe volver. Si no se pasa, va al dashboard.
+   * Útil para el flujo express donde queremos volver a /aporte/[id].
+   */
+  backUrlBase?: string
 }): Promise<{ id: string; init_point: string; sandbox_init_point: string } | null> {
   if (!mpConfigurado()) return null
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  const appUrl  = process.env.NEXT_PUBLIC_APP_URL
+  const baseRet = params.backUrlBase ?? `${appUrl}/cuenta/dashboard`
 
   const body = {
     items: [{
@@ -84,9 +90,9 @@ export async function crearPreferenciaMP(params: {
     payer: { email: params.pagadorEmail },
     external_reference: `${params.tipo}:${params.referencia}`,
     back_urls: {
-      success: `${appUrl}/cuenta/dashboard?pago=ok`,
-      failure: `${appUrl}/cuenta/dashboard?pago=error`,
-      pending: `${appUrl}/cuenta/dashboard?pago=pendiente`,
+      success: `${baseRet}?pago=ok`,
+      failure: `${baseRet}?pago=error`,
+      pending: `${baseRet}?pago=pendiente`,
     },
     auto_return: 'approved',
     notification_url: `${appUrl}/api/webhooks/mp`,

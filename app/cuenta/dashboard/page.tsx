@@ -77,7 +77,7 @@ export default async function DashboardPage() {
             <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
             <div>
               <p className="font-semibold text-emerald-800 text-sm">Estás al día 🎉</p>
-              <p className="text-xs text-emerald-600">No tenés cuotas pendientes. ¡Gracias!</p>
+              <p className="text-xs text-emerald-600">No tenés aportes pendientes. ¡Gracias!</p>
             </div>
           </div>
         ) : (
@@ -86,8 +86,8 @@ export default async function DashboardPage() {
               <div className="flex items-center gap-3">
                 <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
                 <div>
-                  <p className="font-semibold text-red-800 text-sm">Tenés cuotas sin pagar</p>
-                  <p className="text-xs text-red-600">Acercate a la cooperadora o pagá online.</p>
+                  <p className="font-semibold text-red-800 text-sm">Tenés aportes sin realizar</p>
+                  <p className="text-xs text-red-600">Acercate a la cooperadora o colaborá online.</p>
                 </div>
               </div>
               <div className="text-right shrink-0">
@@ -137,12 +137,12 @@ export default async function DashboardPage() {
                   </div>
                   {tipoPago === 'suscripcion' ? (
                     suscripcion?.mp_status === 'activa'
-                      ? <Badge variant="success">Débito automático ✓</Badge>
-                      : <Badge variant="warning">Suscripción pendiente</Badge>
+                      ? <Badge variant="success">Aporte automático ✓</Badge>
+                      : <Badge variant="warning">Aporte automático pendiente</Badge>
                   ) : tipoPago === 'anual' ? (
-                    <Badge variant="secondary">Pago anual</Badge>
+                    <Badge variant="secondary">Aporte anual</Badge>
                   ) : (
-                    <Badge variant="secondary">Pago mensual</Badge>
+                    <Badge variant="secondary">Aporte mensual</Badge>
                   )}
                 </div>
               </CardHeader>
@@ -171,7 +171,7 @@ export default async function DashboardPage() {
                         estadoActual === 'vencida'   ? 'text-red-700'     :
                         estadoActual === 'pendiente' ? 'text-amber-700'   : 'text-slate-500'
                       }`}>
-                        {estadoActual ?? 'Sin cuota generada'}
+                        {estadoActual ?? 'Sin aporte este mes'}
                       </p>
                     </div>
                   </div>
@@ -189,7 +189,7 @@ export default async function DashboardPage() {
                       <Button className="w-full gap-2" asChild>
                         <a href={`/pagar?alumno=${alumno.id}`}>
                           <CreditCard className="h-4 w-4" />
-                          Pagar {cuotasDeuda} cuota{cuotasDeuda > 1 ? 's' : ''} — {formatMonto(
+                          Realizar {cuotasDeuda} aporte{cuotasDeuda > 1 ? 's' : ''} — {formatMonto(
                             historial
                               .filter(c => c.estado === 'pendiente' || c.estado === 'vencida')
                               .reduce((acc, c) => acc + c.monto, 0)
@@ -200,7 +200,7 @@ export default async function DashboardPage() {
                       <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
                         <Wallet className="h-3.5 w-3.5 shrink-0" />
                         <span>
-                          Tenés <strong>{cuotasDeuda}</strong> cuota{cuotasDeuda > 1 ? 's' : ''} pendiente{cuotasDeuda > 1 ? 's' : ''}.
+                          Tenés <strong>{cuotasDeuda}</strong> aporte{cuotasDeuda > 1 ? 's' : ''} pendiente{cuotasDeuda > 1 ? 's' : ''}.
                           El pago online estará disponible pronto. Mientras tanto, acercate a la cooperadora.
                         </span>
                       </div>
@@ -211,7 +211,7 @@ export default async function DashboardPage() {
                 {/* Historial */}
                 <div>
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
-                    Historial
+                    Historial de aportes
                   </p>
                   <PaymentHistory cuotas={historial.slice(0, 8)} />
                 </div>

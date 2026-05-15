@@ -65,28 +65,28 @@ export function RegistroForm() {
   const OPCIONES_PAGO = [
     {
       id: 'suscripcion' as TipoPago,
-      titulo: 'Suscripción mensual',
+      titulo: 'Aporte mensual automático',
       badge: '⭐ Recomendado',
       precio: `${formatMonto(precios.mensual)}/mes`,
-      desc: 'Se descuenta solo cada mes. No tenés que hacer nada.',
+      desc: 'Se procesa solo cada mes. No tenés que hacer nada.',
       colorActivo: 'border-slate-900 bg-slate-900 text-white',
-      proximamente: true,
+      proximamente: false,
     },
     {
       id: 'anual' as TipoPago,
-      titulo: 'Pagar 1 año',
+      titulo: 'Aporte anual',
       badge: null,
       precio: `${formatMonto(precios.anual)}/año`,
-      desc: 'Un solo pago por todo el ciclo lectivo.',
+      desc: 'Un solo aporte por todo el ciclo lectivo.',
       colorActivo: 'border-emerald-600 bg-emerald-600 text-white',
       proximamente: true,
     },
     {
       id: 'manual' as TipoPago,
-      titulo: 'Pago mensual',
+      titulo: 'Aporte mensual',
       badge: null,
       precio: `${formatMonto(precios.mensual)}/mes`,
-      desc: 'Ingresás al portal cada mes y pagás cuando quieras.',
+      desc: 'Ingresás al portal cada mes y colaborás cuando quieras.',
       colorActivo: 'border-slate-500 bg-slate-500 text-white',
       proximamente: false,
     },
@@ -141,7 +141,7 @@ export function RegistroForm() {
           Tu cuenta fue creada para <strong>{nombreAlumno}</strong>.
         </p>
         <p className="text-sm text-slate-500">
-          Ingresá con tu email y contraseña para ver el estado de tus cuotas.
+          Ingresá con tu email y contraseña para ver el estado de tus aportes.
         </p>
         <a
           href="/cuenta"
@@ -323,7 +323,7 @@ export function RegistroForm() {
       {paso === 2 && (
         <div className="space-y-4">
           <div>
-            <h2 className="font-semibold text-slate-900">¿Cómo querés pagar?</h2>
+            <h2 className="font-semibold text-slate-900">¿Cómo querés colaborar?</h2>
             <p className="text-sm text-slate-500">
               Turno {turno} · {nombreAlumno} · {grado}
             </p>

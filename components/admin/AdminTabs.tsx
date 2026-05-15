@@ -1,14 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { Users, CreditCard, UserPlus, Bell, Calendar } from 'lucide-react'
+import { Users, UserPlus, Bell, Calendar, Settings, Database, Sliders, Receipt } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { StudentList } from './StudentList'
 import { AlertsSection } from './AlertsSection'
 import { AddPagadorDialog } from './AddPagadorDialog'
 import { CronButton } from './CronButton'
-import type { AlumnoConEstado, Plan } from '@/types'
+import { PreciosPanel } from './PreciosPanel'
+import { DataExportPanel } from './DataExportPanel'
+import { ConfiguracionPanel } from './ConfiguracionPanel'
+import { PagosHistoryPanel } from './PagosHistoryPanel'
+import type { AlumnoConEstado, Plan, ConfiguracionItem } from '@/types'
 
 type AlumnoDeuda = {
   id: string
@@ -23,9 +27,10 @@ type Props = {
   alumnos: AlumnoConEstado[]
   alumnosConDeuda: AlumnoDeuda[]
   planes: Plan[]
+  configuracion: ConfiguracionItem[]
 }
 
-export function AdminTabs({ alumnos, alumnosConDeuda, planes }: Props) {
+export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: Props) {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
 
   return (
@@ -46,9 +51,25 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes }: Props) {
                 </span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="pagos" className="gap-1.5">
+              <Receipt className="h-3.5 w-3.5" />
+              Pagos
+            </TabsTrigger>
             <TabsTrigger value="cron" className="gap-1.5">
               <Calendar className="h-3.5 w-3.5" />
               Cron mensual
+            </TabsTrigger>
+            <TabsTrigger value="datos" className="gap-1.5">
+              <Database className="h-3.5 w-3.5" />
+              Datos
+            </TabsTrigger>
+            <TabsTrigger value="configuracion" className="gap-1.5">
+              <Settings className="h-3.5 w-3.5" />
+              Planes
+            </TabsTrigger>
+            <TabsTrigger value="parametros" className="gap-1.5">
+              <Sliders className="h-3.5 w-3.5" />
+              Parámetros
             </TabsTrigger>
           </TabsList>
 
@@ -59,15 +80,31 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes }: Props) {
         </div>
 
         <TabsContent value="alumnos">
-          <StudentList alumnos={alumnos} />
+          <StudentList alumnos={alumnos} planes={planes} />
         </TabsContent>
 
         <TabsContent value="alertas">
           <AlertsSection alumnos={alumnosConDeuda} />
         </TabsContent>
 
+        <TabsContent value="pagos">
+          <PagosHistoryPanel />
+        </TabsContent>
+
         <TabsContent value="cron">
           <CronButton />
+        </TabsContent>
+
+        <TabsContent value="datos">
+          <DataExportPanel />
+        </TabsContent>
+
+        <TabsContent value="configuracion">
+          <PreciosPanel planes={planes} />
+        </TabsContent>
+
+        <TabsContent value="parametros">
+          <ConfiguracionPanel configuracion={configuracion} />
         </TabsContent>
       </Tabs>
 

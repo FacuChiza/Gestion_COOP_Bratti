@@ -18,7 +18,7 @@ export default function RegistroPage() {
           </div>
           <div>
             <p className="font-bold text-slate-900 text-lg leading-tight">Cooperadora Escolar</p>
-            <p className="text-sm text-slate-500">Registrate para pagar las cuotas</p>
+            <p className="text-sm text-slate-500">Sumate y gestioná tus aportes desde el portal</p>
           </div>
         </div>
 

@@ -20,14 +20,14 @@ const iconEstado = (estado: string) => {
 }
 
 const labelEstado: Record<string, string> = {
-  pagada:    'Pagada',
+  pagada:    'Realizado',
   pendiente: 'Pendiente',
-  vencida:   'Vencida',
+  vencida:   'No realizado',
 }
 
 export function PaymentHistory({ cuotas }: Props) {
   if (cuotas.length === 0) {
-    return <p className="text-sm text-slate-400 py-4 text-center">Sin historial de cuotas aún.</p>
+    return <p className="text-sm text-slate-400 py-4 text-center">Sin historial de aportes aún.</p>
   }
 
   return (

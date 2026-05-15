@@ -60,7 +60,7 @@ export function StudentCard({ alumno }: Props) {
           <div>
             <p className="text-xs text-slate-500">{formatMes(mesActual, añoActual)}</p>
             <p className="font-semibold capitalize">
-              {estadoActual ?? 'Sin cuota generada'}
+              {estadoActual ?? 'Sin aporte este mes'}
             </p>
           </div>
         </div>
@@ -73,7 +73,7 @@ export function StudentCard({ alumno }: Props) {
         <div className="flex items-start justify-between">
           <CardTitle className="text-base">{alumno.nombre}</CardTitle>
           {alumno.cuotas_deuda > 0 && (
-            <Badge variant="danger">{alumno.cuotas_deuda} en deuda</Badge>
+            <Badge variant="danger">{alumno.cuotas_deuda} pendiente{alumno.cuotas_deuda !== 1 ? 's' : ''}</Badge>
           )}
         </div>
         <p className="text-xs text-slate-500">
@@ -88,7 +88,7 @@ export function StudentCard({ alumno }: Props) {
       <CardContent>
         {alumno.historial.length > 0 ? (
           <div>
-            <p className="text-xs font-medium text-slate-400 mb-2">Últimas cuotas</p>
+            <p className="text-xs font-medium text-slate-400 mb-2">Últimos aportes</p>
             <div className="space-y-1">
               {alumno.historial.slice(0, 6).map((cuota) => (
                 <div key={cuota.id} className="flex items-center justify-between text-sm">
@@ -112,7 +112,7 @@ export function StudentCard({ alumno }: Props) {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-slate-400">No hay historial de cuotas</p>
+          <p className="text-sm text-slate-400">No hay historial de aportes</p>
         )}
       </CardContent>
     </Card>

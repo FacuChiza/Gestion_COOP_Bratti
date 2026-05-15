@@ -1,14 +1,15 @@
 import { School } from 'lucide-react'
-import { getAlumnosConEstado, getAlumnosConDeuda, getPlanes } from './actions'
+import { getAlumnosConEstado, getAlumnosConDeuda, getPlanes, getConfiguracion } from './actions'
 import { AdminTabs } from '@/components/admin/AdminTabs'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminPage() {
-  const [alumnos, alumnosConDeuda, planes] = await Promise.all([
+  const [alumnos, alumnosConDeuda, planes, configuracion] = await Promise.all([
     getAlumnosConEstado(),
     getAlumnosConDeuda(3),
     getPlanes(),
+    getConfiguracion(),
   ])
 
   return (
@@ -43,27 +44,32 @@ export default async function AdminPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <StatCard
             label="Alumnos activos"
-            value={alumnos.length}
+            value={alumnos.filter((a) => a.activo !== false).length}
             color="text-slate-900"
           />
           <StatCard
-            label="Cuotas pagas este mes"
-            value={alumnos.filter((a) => a.cuota_actual?.estado === 'pagada').length}
+            label="Aportes realizados este mes"
+            value={alumnos.filter((a) => a.activo !== false && a.cuota_actual?.estado === 'pagada').length}
             color="text-emerald-600"
           />
           <StatCard
-            label="Cuotas pendientes"
-            value={alumnos.filter((a) => a.cuota_actual?.estado === 'pendiente').length}
+            label="Aportes pendientes"
+            value={alumnos.filter((a) => a.activo !== false && a.cuota_actual?.estado === 'pendiente').length}
             color="text-amber-600"
           />
           <StatCard
-            label="Con 3+ meses deuda"
+            label="Con 3+ aportes pendientes"
             value={alumnosConDeuda.length}
             color="text-red-600"
           />
         </div>
 
-        <AdminTabs alumnos={alumnos} alumnosConDeuda={alumnosConDeuda} planes={planes} />
+        <AdminTabs
+          alumnos={alumnos}
+          alumnosConDeuda={alumnosConDeuda}
+          planes={planes}
+          configuracion={configuracion}
+        />
       </div>
     </div>
   )

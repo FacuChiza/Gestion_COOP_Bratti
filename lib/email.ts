@@ -120,6 +120,8 @@ export type ReciboParams = {
   montoTotal:    number
   metodoPago:    'mercadopago' | 'efectivo'
   nroRecibo?:    string
+  /** Si se pasa, se incluye en el email un link permanente /aporte/[pagadorId] */
+  pagadorId?:    string
 }
 
 export async function enviarRecibo(params: ReciboParams): Promise<boolean> {
@@ -140,11 +142,11 @@ export async function enviarRecibo(params: ReciboParams): Promise<boolean> {
     <!-- Badge confirmación -->
     <div style="text-align:center;margin-bottom:24px">
       <div style="display:inline-block;background:#dcfce7;border-radius:50px;padding:10px 20px">
-        <span style="color:#166534;font-weight:700;font-size:15px">✅ Pago confirmado</span>
+        <span style="color:#166534;font-weight:700;font-size:15px">✅ Aporte registrado</span>
       </div>
     </div>
 
-    <h2 style="margin:0 0 4px;font-size:20px;color:#0f172a">Recibo de pago</h2>
+    <h2 style="margin:0 0 4px;font-size:20px;color:#0f172a">Comprobante de aporte</h2>
     <p style="margin:0 0 24px;font-size:14px;color:#64748b">Nº ${nro} · ${fecha}</p>
 
     <!-- Info pagador y alumno -->
@@ -161,8 +163,8 @@ export async function enviarRecibo(params: ReciboParams): Promise<boolean> {
       </tr>
     </table>
 
-    <!-- Cuotas pagadas -->
-    <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Cuotas abonadas</p>
+    <!-- Aportes realizados -->
+    <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Aportes realizados</p>
     <table width="100%" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:16px;border-collapse:collapse">
       <thead>
         <tr style="background:#f8fafc">
@@ -190,12 +192,25 @@ export async function enviarRecibo(params: ReciboParams): Promise<boolean> {
     </table>
 
     <p style="margin:20px 0 0;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#166534;text-align:center">
-      Este comprobante es válido como recibo de pago de la Cooperadora Escolar Aristides Bratti.
-    </p>`
+      Este comprobante acredita el aporte voluntario a la Cooperadora Escolar Aristides Bratti.
+    </p>
+
+    ${params.pagadorId ? `
+    <div style="margin-top:24px;padding:16px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;text-align:center">
+      <p style="margin:0 0 8px;font-size:13px;color:#475569">
+        ¿Querés colaborar de nuevo más adelante? Guardá este link personal:
+      </p>
+      <a href="${process.env.NEXT_PUBLIC_APP_URL}/aporte/${params.pagadorId}" style="font-size:13px;color:#0f172a;font-weight:600;word-break:break-all">
+        ${process.env.NEXT_PUBLIC_APP_URL}/aporte/${params.pagadorId}
+      </a>
+      <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">
+        Sin registro, en pocos clicks.
+      </p>
+    </div>` : ''}`
 
   return enviarEmail({
     to:      params.mail,
-    subject: `✅ Recibo de pago — ${alumnos} · ${fechaLarga()}`,
+    subject: `✅ Comprobante de aporte — ${alumnos} · ${fechaLarga()}`,
     html:    layoutEmail(contenido),
   })
 }
@@ -212,13 +227,13 @@ export async function emailRecordatorioMensual(params: {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
 
   const contenido = `
-    <h2 style="margin:0 0 8px;color:#0f172a">Recordatorio de cuota 📅</h2>
+    <h2 style="margin:0 0 8px;color:#0f172a">Recordatorio de aporte 📅</h2>
     <p style="margin:0 0 20px;color:#64748b;font-size:15px">
       Hola <strong>${params.nombrePagador}</strong>,
     </p>
     <p style="color:#334155;font-size:15px;line-height:1.6">
-      Te recordamos que la cuota de <strong>${params.mes}</strong> para <strong>${params.nombreAlumno}</strong>
-      está disponible para pagar.
+      Te recordamos que el aporte de <strong>${params.mes}</strong> para <strong>${params.nombreAlumno}</strong>
+      está disponible.
     </p>
 
     <table width="100%" style="background:#f8fafc;border-radius:10px;margin:20px 0">
@@ -246,7 +261,7 @@ export async function emailRecordatorioMensual(params: {
 
   return enviarEmail({
     to:      params.mail,
-    subject: `Recordatorio: cuota ${params.mes} — ${params.nombreAlumno}`,
+    subject: `Recordatorio: aporte ${params.mes} — ${params.nombreAlumno}`,
     html:    layoutEmail(contenido),
   })
 }
@@ -263,32 +278,32 @@ export async function emailAlertaDeuda(params: {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
 
   const contenido = `
-    <h2 style="margin:0 0 8px;color:#0f172a">Cuotas pendientes ⚠️</h2>
+    <h2 style="margin:0 0 8px;color:#0f172a">Aportes pendientes ⚠️</h2>
     <p style="margin:0 0 20px;color:#64748b;font-size:15px">
       Hola <strong>${params.nombrePagador}</strong>,
     </p>
 
     <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px 20px;margin-bottom:20px">
       <p style="margin:0;font-size:15px;color:#991b1b;line-height:1.6">
-        <strong>${params.nombreAlumno}</strong> tiene <strong>${params.mesesDeuda} cuotas</strong> sin pagar
+        <strong>${params.nombreAlumno}</strong> tiene <strong>${params.mesesDeuda} aportes</strong> pendientes
         por un total de <strong>${formatMonto(params.montoTotal)}</strong>.
       </p>
     </div>
 
     <p style="color:#334155;font-size:14px;line-height:1.6">
-      Te pedimos que regularices la situación a la brevedad. Podés pagar online desde
+      Te pedimos que regularices los aportes a la brevedad. Podés colaborar online desde
       el portal o acercarte personalmente a la cooperadora.
     </p>
 
     <div style="text-align:center;margin:24px 0">
       <a href="${appUrl}/cuenta" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">
-        Regularizar deuda →
+        Regularizar aportes →
       </a>
     </div>`
 
   return enviarEmail({
     to:      params.mail,
-    subject: `⚠️ ${params.mesesDeuda} cuotas pendientes — ${params.nombreAlumno}`,
+    subject: `⚠️ ${params.mesesDeuda} aportes pendientes — ${params.nombreAlumno}`,
     html:    layoutEmail(contenido),
   })
 }
@@ -309,7 +324,7 @@ export async function emailBienvenida(params: {
     </p>
     <p style="color:#334155;font-size:15px;line-height:1.6">
       Tu cuenta fue creada exitosamente para el/la estudiante <strong>${params.nombreAlumno}</strong>.
-      Desde tu portal podés ver el estado de las cuotas y pagar online de forma fácil y segura.
+      Desde tu portal podés ver el estado de los aportes y colaborar online de forma fácil y segura.
     </p>
 
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;margin:20px 0">

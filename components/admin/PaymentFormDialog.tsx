@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { formatMes, formatMonto } from '@/lib/utils'
@@ -21,11 +22,15 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
   const [cuotas, setCuotas]           = useState<Cuota[]>([])
   const [seleccionadas, setSeleccionadas] = useState<string[]>([])
   const [notas, setNotas]             = useState('')
+  const [descuento, setDescuento]     = useState<string>('0')
+  const [metodo, setMetodo]           = useState<'efectivo' | 'transferencia' | 'mercadopago'>('efectivo')
   const [isPending, startTransition]  = useTransition()
 
   useEffect(() => {
     if (open) {
       setNotas('')
+      setDescuento('0')
+      setMetodo('efectivo')
       getCuotasPendientesAlumno(alumno.id).then((data) => {
         setCuotas(data as Cuota[])
         setSeleccionadas(data.map((c) => c.id)) // todas pre-seleccionadas
@@ -33,9 +38,12 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
     }
   }, [open, alumno.id])
 
-  const montoTotal = cuotas
+  const montoBruto = cuotas
     .filter((c) => seleccionadas.includes(c.id))
     .reduce((acc, c) => acc + c.monto, 0)
+
+  const descNum = Math.max(0, Number(descuento) || 0)
+  const montoTotal = Math.max(0, montoBruto - descNum)
 
   const toggleCuota = (id: string) => {
     setSeleccionadas((prev) =>
@@ -45,7 +53,11 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
 
   const handleSubmit = () => {
     if (seleccionadas.length === 0) {
-      toast.error('Seleccioná al menos una cuota')
+      toast.error('Seleccioná al menos un aporte')
+      return
+    }
+    if (descNum > montoBruto) {
+      toast.error('El descuento no puede ser mayor al total bruto')
       return
     }
 
@@ -53,6 +65,8 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
     formData.set('pagador_id', alumno.pagador_id ?? '')
     seleccionadas.forEach((id) => formData.append('cuota_ids', id))
     formData.set('notas', notas)
+    formData.set('descuento', String(descNum))
+    formData.set('metodo', metodo)
 
     startTransition(async () => {
       const result = await registrarPago(formData)
@@ -69,18 +83,18 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Registrar pago — {alumno.nombre}</DialogTitle>
+          <DialogTitle>Registrar aporte — {alumno.nombre}</DialogTitle>
           <DialogDescription>
-            Seleccioná las cuotas que el/la pagador/a abona en este momento.
+            Seleccioná los aportes que el/la pagador/a realiza en este momento.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Lista de cuotas */}
           <div>
-            <Label className="mb-2 block">Cuotas pendientes</Label>
+            <Label className="mb-2 block">Aportes pendientes</Label>
             {cuotas.length === 0 ? (
-              <p className="text-sm text-slate-400">Sin cuotas pendientes</p>
+              <p className="text-sm text-slate-400">Sin aportes pendientes</p>
             ) : (
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {cuotas.map((cuota) => (
@@ -107,6 +121,33 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
             )}
           </div>
 
+          {/* Método y descuento */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Método</Label>
+              <select
+                value={metodo}
+                onChange={(e) => setMetodo(e.target.value as typeof metodo)}
+                className="flex h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+              >
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="mercadopago">Mercado Pago</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Descuento ($)</Label>
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                value={descuento}
+                onChange={(e) => setDescuento(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+          </div>
+
           {/* Notas */}
           <div className="space-y-1">
             <Label htmlFor="notas">Notas (opcional)</Label>
@@ -114,15 +155,27 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
               id="notas"
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
-              placeholder="Ej: pagó en dos partes, trajo el dinero el/la alumno/a..."
+              placeholder="Ej: pagó en dos partes, motivo del descuento, etc."
               rows={2}
             />
           </div>
 
           {/* Total */}
-          <div className="flex items-center justify-between rounded-lg bg-slate-50 border border-slate-200 px-4 py-3">
-            <span className="font-semibold text-slate-700">Total a cobrar</span>
-            <span className="text-lg font-bold text-slate-900">{formatMonto(montoTotal)}</span>
+          <div className="rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>Subtotal</span>
+              <span>{formatMonto(montoBruto)}</span>
+            </div>
+            {descNum > 0 && (
+              <div className="flex items-center justify-between text-xs text-emerald-700">
+                <span>Descuento</span>
+                <span>− {formatMonto(descNum)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between border-t border-slate-200 pt-1 mt-1">
+              <span className="font-semibold text-slate-700">Total a cobrar</span>
+              <span className="text-lg font-bold text-slate-900">{formatMonto(montoTotal)}</span>
+            </div>
           </div>
 
           <div className="flex gap-2 justify-end">
@@ -130,7 +183,7 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
               Cancelar
             </Button>
             <Button onClick={handleSubmit} disabled={isPending || seleccionadas.length === 0}>
-              {isPending ? 'Registrando...' : 'Confirmar pago'}
+              {isPending ? 'Registrando...' : 'Confirmar aporte'}
             </Button>
           </div>
         </div>

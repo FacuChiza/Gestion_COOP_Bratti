@@ -1,19 +1,24 @@
 'use client'
 
 import { useState } from 'react'
+import { Pencil, UserCog } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatMes, formatMonto } from '@/lib/utils'
-import type { AlumnoConEstado } from '@/types'
+import type { AlumnoConEstado, Plan, Pagador } from '@/types'
 import { PaymentFormDialog } from './PaymentFormDialog'
+import { LinkPagoButton } from './LinkPagoButton'
+import { EditStudentDialog } from './EditStudentDialog'
+import { EditPagadorDialog } from './EditPagadorDialog'
 
 type Props = {
   alumnos: AlumnoConEstado[]
+  planes?: Plan[]
 }
 
 const estadoBadge = (cuotaEstado: string | undefined | null, tieneSusc: boolean) => {
   if (!tieneSusc) return <Badge variant="outline">Sin suscripción</Badge>
-  if (!cuotaEstado) return <Badge variant="secondary">Sin cuota</Badge>
+  if (!cuotaEstado) return <Badge variant="secondary">Sin aporte</Badge>
   if (cuotaEstado === 'pagada') return <Badge variant="success">Pagada</Badge>
   if (cuotaEstado === 'vencida') return <Badge variant="danger">Vencida</Badge>
   return <Badge variant="warning">Pendiente</Badge>
@@ -25,19 +30,23 @@ function cursosUnicos(alumnos: AlumnoConEstado[]) {
   return ['', ...Array.from(set).sort()]
 }
 
-export function StudentList({ alumnos }: Props) {
+export function StudentList({ alumnos, planes = [] }: Props) {
   const [busqueda, setBusqueda]   = useState('')
   const [cursoFiltro, setCursoFiltro] = useState('')
   const [turnoFiltro, setTurnoFiltro] = useState('')
   const [alumnoSeleccionado, setAlumnoSeleccionado] = useState<AlumnoConEstado | null>(null)
+  const [alumnoEdit, setAlumnoEdit]     = useState<AlumnoConEstado | null>(null)
+  const [pagadorEdit, setPagadorEdit]   = useState<Pagador | null>(null)
+  const [mostrarInactivos, setMostrarInactivos] = useState(false)
 
   const filtrados = alumnos.filter((a) => {
+    const matchActivo = mostrarInactivos ? true : a.activo !== false
     const matchTexto =
       a.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       a.grado.toLowerCase().includes(busqueda.toLowerCase())
     const matchCurso = !cursoFiltro || a.grado === cursoFiltro
     const matchTurno = !turnoFiltro || (a.turno ?? '').toLowerCase() === turnoFiltro.toLowerCase()
-    return matchTexto && matchCurso && matchTurno
+    return matchActivo && matchTexto && matchCurso && matchTurno
   })
 
   const cursos = cursosUnicos(alumnos)
@@ -80,6 +89,16 @@ export function StudentList({ alumnos }: Props) {
           <option value="Noche">Noche</option>
         </select>
 
+        <label className="flex items-center gap-1.5 text-xs text-slate-600 ml-1">
+          <input
+            type="checkbox"
+            checked={mostrarInactivos}
+            onChange={(e) => setMostrarInactivos(e.target.checked)}
+            className="h-3.5 w-3.5 rounded border-slate-300"
+          />
+          Mostrar inactivos
+        </label>
+
         <span className="text-sm text-slate-500 ml-auto">{filtrados.length} estudiantes</span>
       </div>
 
@@ -93,7 +112,7 @@ export function StudentList({ alumnos }: Props) {
               <th className="text-left px-4 py-3 font-medium text-slate-600">
                 {formatMes(mesActual, añoActual)}
               </th>
-              <th className="text-left px-4 py-3 font-medium text-slate-600">Deuda</th>
+              <th className="text-left px-4 py-3 font-medium text-slate-600">Aportes pendientes</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -106,8 +125,16 @@ export function StudentList({ alumnos }: Props) {
               </tr>
             )}
             {filtrados.map((alumno) => (
-              <tr key={alumno.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-4 py-3 font-medium">{alumno.nombre}</td>
+              <tr
+                key={alumno.id}
+                className={`hover:bg-slate-50 transition-colors ${alumno.activo === false ? 'opacity-50' : ''}`}
+              >
+                <td className="px-4 py-3 font-medium">
+                  {alumno.nombre}
+                  {alumno.activo === false && (
+                    <span className="ml-2 text-xs text-slate-400">(inactivo)</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-slate-600">
                   {alumno.grado}
                   {alumno.turno && <span className="text-slate-400"> · {alumno.turno}</span>}
@@ -125,21 +152,48 @@ export function StudentList({ alumnos }: Props) {
                 </td>
                 <td className="px-4 py-3">
                   {alumno.cuotas_deuda > 0 ? (
-                    <span className="text-red-600 font-medium">{alumno.cuotas_deuda} mes{alumno.cuotas_deuda !== 1 ? 'es' : ''}</span>
+                    <span className="text-red-600 font-medium">{alumno.cuotas_deuda} aporte{alumno.cuotas_deuda !== 1 ? 's' : ''}</span>
                   ) : (
                     <span className="text-slate-400">—</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  {alumno.cuotas_deuda > 0 && (
+                  <div className="flex items-center justify-end gap-1">
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={() => setAlumnoSeleccionado(alumno)}
+                      variant="ghost"
+                      onClick={() => setAlumnoEdit(alumno)}
+                      title="Editar alumno / cambiar plan / desactivar"
                     >
-                      Registrar pago
+                      <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                  )}
+                    {alumno.pagadores && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setPagadorEdit(alumno.pagadores!)}
+                        title="Editar pagador"
+                      >
+                        <UserCog className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {alumno.pagador_id && (
+                      <LinkPagoButton
+                        pagadorId={alumno.pagador_id}
+                        pagadorNombre={alumno.pagadores?.nombre}
+                        pagadorTelefono={alumno.pagadores?.telefono}
+                      />
+                    )}
+                    {alumno.cuotas_deuda > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setAlumnoSeleccionado(alumno)}
+                      >
+                        Registrar aporte
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -152,6 +206,23 @@ export function StudentList({ alumnos }: Props) {
           alumno={alumnoSeleccionado}
           open={!!alumnoSeleccionado}
           onClose={() => setAlumnoSeleccionado(null)}
+        />
+      )}
+
+      {alumnoEdit && (
+        <EditStudentDialog
+          alumno={alumnoEdit}
+          planes={planes}
+          open={!!alumnoEdit}
+          onClose={() => setAlumnoEdit(null)}
+        />
+      )}
+
+      {pagadorEdit && (
+        <EditPagadorDialog
+          pagador={pagadorEdit}
+          open={!!pagadorEdit}
+          onClose={() => setPagadorEdit(null)}
         />
       )}
     </div>

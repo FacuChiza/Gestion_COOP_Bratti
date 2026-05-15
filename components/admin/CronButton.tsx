@@ -21,7 +21,7 @@ export function CronButton() {
       const result = await ejecutarCronMensual()
       if (result?.success) {
         toast.success(
-          `Cron ejecutado: ${result.cuotasGeneradas} cuota${result.cuotasGeneradas !== 1 ? 's' : ''} generada${result.cuotasGeneradas !== 1 ? 's' : ''}, ${result.cuotasVencidas} marcada${result.cuotasVencidas !== 1 ? 's' : ''} como vencida${result.cuotasVencidas !== 1 ? 's' : ''}`
+          `Proceso ejecutado: ${result.cuotasGeneradas} aporte${result.cuotasGeneradas !== 1 ? 's' : ''} generado${result.cuotasGeneradas !== 1 ? 's' : ''}, ${result.cuotasVencidas} marcado${result.cuotasVencidas !== 1 ? 's' : ''} como no realizado${result.cuotasVencidas !== 1 ? 's' : ''}`
         )
       } else {
         toast.error('Error al ejecutar el cron')
@@ -32,12 +32,12 @@ export function CronButton() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Generación mensual de cuotas</CardTitle>
+        <CardTitle className="text-base">Generación mensual de aportes</CardTitle>
         <CardDescription>
           Esta acción:
           <ol className="list-decimal list-inside mt-1 space-y-0.5">
-            <li>Genera las cuotas de <strong>{formatMes(mesActual, añoActual)}</strong> para todas las suscripciones activas</li>
-            <li>Marca como <strong>vencidas</strong> las cuotas pendientes de {formatMes(fechaMesAnterior.getMonth() + 1, fechaMesAnterior.getFullYear())}</li>
+            <li>Genera los aportes de <strong>{formatMes(mesActual, añoActual)}</strong> para todas las suscripciones activas</li>
+            <li>Marca como <strong>no realizados</strong> los aportes pendientes de {formatMes(fechaMesAnterior.getMonth() + 1, fechaMesAnterior.getFullYear())}</li>
           </ol>
         </CardDescription>
       </CardHeader>
@@ -47,7 +47,7 @@ export function CronButton() {
           {isPending ? 'Ejecutando...' : 'Ejecutar proceso mensual'}
         </Button>
         <p className="mt-2 text-xs text-slate-400">
-          Las cuotas ya existentes no se duplican. Podés ejecutar esto varias veces de forma segura.
+          Los aportes ya existentes no se duplican. Podés ejecutar esto varias veces de forma segura.
         </p>
       </CardContent>
     </Card>

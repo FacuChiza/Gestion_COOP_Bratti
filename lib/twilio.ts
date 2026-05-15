@@ -52,7 +52,7 @@ export async function wspConfirmacionPago(params: {
 }) {
   const msg =
     `✅ *Cooperadora Escolar*\n\n` +
-    `Hola ${params.nombrePagador}! Se registró el pago de *${params.mes}* ` +
+    `Hola ${params.nombrePagador}! Se registró el aporte de *${params.mes}* ` +
     `para *${params.nombreAlumno}* por *$${params.monto.toLocaleString('es-AR')}*. ` +
     `¡Gracias! 🙌`
 
@@ -68,7 +68,7 @@ export async function wspDebitoAutomatico(params: {
 }) {
   const msg =
     `💳 *Cooperadora Escolar*\n\n` +
-    `Hola ${params.nombrePagador}! Se debitó automáticamente la cuota de *${params.mes}* ` +
+    `Hola ${params.nombrePagador}! Se procesó el aporte automático de *${params.mes}* ` +
     `para *${params.nombreAlumno}* por *$${params.monto.toLocaleString('es-AR')}*.\n\n` +
     `Podés ver el detalle en tu portal: ${process.env.NEXT_PUBLIC_APP_URL}/cuenta`
 
@@ -84,9 +84,9 @@ export async function wspRecordatorioMensual(params: {
 }) {
   const msg =
     `📅 *Cooperadora Escolar*\n\n` +
-    `Hola ${params.nombrePagador}! Te recordamos que la cuota de *${params.mes}* ` +
+    `Hola ${params.nombrePagador}! Te recordamos que el aporte de *${params.mes}* ` +
     `para *${params.nombreAlumno}* es de *$${params.monto.toLocaleString('es-AR')}*.\n\n` +
-    `Pagá fácil desde tu portal: ${process.env.NEXT_PUBLIC_APP_URL}/cuenta`
+    `Colaborá fácil desde tu portal: ${process.env.NEXT_PUBLIC_APP_URL}/cuenta`
 
   return enviarWhatsApp(params.telefono, msg)
 }
@@ -101,8 +101,8 @@ export async function wspAlertaDeuda(params: {
   const msg =
     `⚠️ *Cooperadora Escolar*\n\n` +
     `Hola ${params.nombrePagador}. *${params.nombreAlumno}* tiene ` +
-    `*${params.mesesDeuda} meses* sin pagar (total: *$${params.montoTotal.toLocaleString('es-AR')}*).\n\n` +
-    `Te pedimos que te acerques a regularizar la situación o pagá desde: ` +
+    `*${params.mesesDeuda} aportes* pendientes (total: *$${params.montoTotal.toLocaleString('es-AR')}*).\n\n` +
+    `Te pedimos que te acerques a la cooperadora o regularizá desde: ` +
     `${process.env.NEXT_PUBLIC_APP_URL}/cuenta`
 
   return enviarWhatsApp(params.telefono, msg)
@@ -118,7 +118,7 @@ export async function wspBienvenida(params: {
     `👋 *Bienvenido/a a la Cooperadora Escolar!*\n\n` +
     `Hola ${params.nombrePagador}! Tu cuenta fue creada para el alumno *${params.nombreAlumno}*.\n\n` +
     `Accedé a tu portal en:\n${params.portalUrl}\n\n` +
-    `Ahí vas a poder ver el estado de tus cuotas y pagar online.`
+    `Ahí vas a poder ver el estado de tus aportes y colaborar online.`
 
   return enviarWhatsApp(params.telefono, msg)
 }

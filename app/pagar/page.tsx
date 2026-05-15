@@ -163,7 +163,7 @@ export default async function PagarPage({
   if (modoTodo) {
     const cantAlumnos = alumnosFiltrados.length
     const cantCuotas  = todasLasCuotas.length
-    tituloMP    = `${cantCuotas} cuota${cantCuotas > 1 ? 's' : ''} — ${cantAlumnos} estudiante${cantAlumnos > 1 ? 's' : ''}`
+    tituloMP    = `${cantCuotas} aporte${cantCuotas > 1 ? 's' : ''} — ${cantAlumnos} estudiante${cantAlumnos > 1 ? 's' : ''}`
     referenciaMP = `pagador:${pagador.id}`
     tipoMP      = 'manual'
   } else {
@@ -182,7 +182,7 @@ export default async function PagarPage({
     }
 
     const cantCuotas = todasLasCuotas.length
-    tituloMP    = `${cantCuotas} cuota${cantCuotas > 1 ? 's' : ''} — ${alumno.nombre}`
+    tituloMP    = `${cantCuotas} aporte${cantCuotas > 1 ? 's' : ''} — ${alumno.nombre}`
     referenciaMP = suscripcionActiva.id
     tipoMP      = 'manual'
   }

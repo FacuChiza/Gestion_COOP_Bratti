@@ -17,7 +17,7 @@ type Props = {
 }
 
 const GRADOS = ['1°', '2°', '3°', '4°', '5°', '6°', '7°']
-const TURNOS = ['Mañana', 'Tarde']
+const TURNOS = ['Mañana', 'Noche']
 
 export function AddPagadorDialog({ open, onClose, planes }: Props) {
   const formRef = useRef<HTMLFormElement>(null)
@@ -115,7 +115,7 @@ export function AddPagadorDialog({ open, onClose, planes }: Props) {
                 </select>
               </div>
               <div className="col-span-2 space-y-1">
-                <Label htmlFor="plan_id">Plan de cuotas *</Label>
+                <Label htmlFor="plan_id">Plan de aportes *</Label>
                 <select
                   name="plan_id"
                   required

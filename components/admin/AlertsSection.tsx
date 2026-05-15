@@ -22,7 +22,7 @@ export function AlertsSection({ alumnos, minMeses = 3 }: Props) {
       <Card>
         <CardContent className="flex items-center gap-3 py-8 text-emerald-600">
           <span className="text-2xl">✓</span>
-          <span>Ningún alumno con {minMeses} o más meses de deuda.</span>
+          <span>Ningún alumno con {minMeses} o más aportes pendientes.</span>
         </CardContent>
       </Card>
     )
@@ -33,7 +33,7 @@ export function AlertsSection({ alumnos, minMeses = 3 }: Props) {
       <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
         <AlertTriangle className="h-5 w-5 shrink-0" />
         <p className="text-sm font-medium">
-          {alumnos.length} alumno{alumnos.length !== 1 ? 's' : ''} con {minMeses} o más meses de deuda acumulada
+          {alumnos.length} alumno{alumnos.length !== 1 ? 's' : ''} con {minMeses} o más aportes pendientes
         </p>
       </div>
 
@@ -43,7 +43,7 @@ export function AlertsSection({ alumnos, minMeses = 3 }: Props) {
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between">
                 <CardTitle className="text-base">{alumno.nombre}</CardTitle>
-                <Badge variant="danger">{alumno.cuotas_deuda} meses</Badge>
+                <Badge variant="danger">{alumno.cuotas_deuda} aportes</Badge>
               </div>
               <p className="text-xs text-slate-500">
                 {alumno.grado}{alumno.turno ? ` · ${alumno.turno}` : ''}

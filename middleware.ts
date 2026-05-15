@@ -34,8 +34,8 @@ function checkAdminAuth(request: NextRequest): NextResponse | null {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // 1. Proteger /admin
-  if (pathname.startsWith('/admin')) {
+  // 1. Proteger /admin y /api/admin
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     const adminDenied = checkAdminAuth(request)
     if (adminDenied) return adminDenied
   }
@@ -82,6 +82,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/admin/:path*',
+    '/api/admin/:path*',
     '/cuenta',
     '/cuenta/dashboard',
     '/cuenta/dashboard/:path*',

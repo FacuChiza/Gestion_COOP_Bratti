@@ -9,7 +9,15 @@
       "Bash(npx next:*)",
       "Bash(node node_modules/.bin/next build)",
       "Bash(cmd /c \"npm run build\")",
-      "Bash(powershell -Command \"npm run build\")"
+      "Bash(powershell -Command \"npm run build\")",
+      "Bash(mkdir -p \"/c/Users/Facu Chiarenza/Desktop/MayordomoAssistant\")",
+      "Read(//c/Users/Facu Chiarenza/Desktop/**)",
+      "Bash(pip install *)",
+      "Bash(python -m pip install sounddevice numpy edge-tts pygame pyfiglet colorama)",
+      "Bash(python -m pip install spotipy)",
+      "WebSearch",
+      "Bash(grep -E \"\\\\.\\(sql|md\\)$\")",
+      "Bash(git add *)"
     ]
   }
 }
