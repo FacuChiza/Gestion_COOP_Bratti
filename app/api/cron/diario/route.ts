@@ -114,14 +114,19 @@ export async function GET(req: NextRequest) {
     }
 
     // Cuotas pendientes / vencidas del pagador (de todos sus alumnos)
+    // Solo necesitamos `monto` para el total. Evitamos seleccionar `año` por
+    // un bug del parser de tipos de supabase-js con caracteres no ASCII.
     const { data: cuotasDeuda } = await supabase
       .from('cuotas')
-      .select('mes, año, monto')
+      .select('monto')
       .in('alumno_id', alumnoIds)
       .in('estado', ['pendiente', 'vencida'])
 
     const mesesDeuda = cuotasDeuda?.length ?? 0
-    const montoTotal = cuotasDeuda?.reduce((acc, c) => acc + c.monto, 0) ?? 0
+    const montoTotal = (cuotasDeuda ?? []).reduce(
+      (acc: number, c: { monto: number }) => acc + c.monto,
+      0,
+    )
     if (mesesDeuda === 0) continue
 
     // Fecha del último pago no anulado
