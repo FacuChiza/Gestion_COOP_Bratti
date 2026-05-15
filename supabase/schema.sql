@@ -48,9 +48,11 @@ create table if not exists alumnos (
 create table if not exists planes (
   id              uuid primary key default gen_random_uuid(),
   nombre          text not null,
-  monto_total     numeric not null,
+  monto_total     integer not null,                 -- pesos enteros
   cantidad_meses  int not null,
-  precio_por_mes  numeric generated always as (monto_total / cantidad_meses) stored,
+  precio_por_mes  integer generated always as (
+    round(monto_total::numeric / cantidad_meses)::integer
+  ) stored,
   turno           text not null default 'diurno',  -- 'diurno' | 'nocturno'
   tipo            text not null default 'mensual'  -- 'mensual' | 'anual'
 );
@@ -76,7 +78,7 @@ create table if not exists cuotas (
   suscripcion_id  uuid references suscripciones(id),
   mes             int not null,
   año             int not null,
-  monto           numeric not null,
+  monto           integer not null,                  -- pesos enteros
   estado          text default 'pendiente',          -- 'pendiente' | 'pagada' | 'vencida'
   created_at      timestamptz default now(),
   unique(alumno_id, mes, año)
@@ -86,8 +88,8 @@ create table if not exists cuotas (
 create table if not exists pagos (
   id                  uuid primary key default gen_random_uuid(),
   pagador_id          uuid references pagadores(id),
-  monto               numeric not null,
-  descuento           numeric default 0,
+  monto               integer not null,              -- pesos enteros
+  descuento           integer default 0,              -- pesos enteros
   fecha               date not null,
   metodo              text not null,                  -- 'efectivo' | 'mercadopago' | 'transferencia'
   referencia_externa  text,                            -- id de pago de MP

@@ -141,7 +141,7 @@ export async function registrarPago(formData: FormData) {
     .in('id', cuotaIds)
 
   const montoBruto = cuotas?.reduce((acc, c) => acc + c.monto, 0) ?? 0
-  let descuento = Number(descuentoRaw ?? 0)
+  let descuento = Math.round(Number(descuentoRaw ?? 0))
   if (isNaN(descuento) || descuento < 0) descuento = 0
 
   // Tope: leemos descuento_maximo_porcentaje desde configuracion
@@ -330,7 +330,7 @@ export async function actualizarPrecio(formData: FormData) {
   const admin = createAdminClient()
 
   const planId        = formData.get('plan_id')        as string
-  const montoTotal    = Number(formData.get('monto_total'))
+  const montoTotal    = Math.round(Number(formData.get('monto_total')))
   const cantidadMeses = Number(formData.get('cantidad_meses'))
 
   if (!planId) {
@@ -726,7 +726,7 @@ export async function generarAporteManual(formData: FormData) {
   const alumnoId = formData.get('alumno_id') as string
   const mes      = Number(formData.get('mes'))
   const año      = Number(formData.get('año'))
-  const monto    = Number(formData.get('monto'))
+  const monto    = Math.round(Number(formData.get('monto')))
 
   if (!alumnoId || !mes || !año || !monto) {
     return { error: 'Faltan datos' }
