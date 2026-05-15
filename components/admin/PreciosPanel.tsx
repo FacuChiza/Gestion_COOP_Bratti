@@ -54,70 +54,76 @@ function PlanRow({ plan }: { plan: Plan }) {
   }
 
   return (
-    <div className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3 bg-white">
-      <div className="flex-1">
-        <p className="font-medium text-slate-900 text-sm">{plan.nombre}</p>
-        <p className="text-xs text-slate-500 mt-0.5">
-          {plan.tipo === 'mensual'
-            ? `${formatMonto(plan.precio_por_mes)}/mes · ${plan.cantidad_meses} meses`
-            : `${formatMonto(plan.monto_total)} total · ${formatMonto(plan.precio_por_mes)}/mes`}
-        </p>
+    <div className="rounded-lg border border-slate-200 px-3 py-3 sm:px-4 bg-white">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-slate-900 text-sm truncate">{plan.nombre}</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {plan.tipo === 'mensual'
+              ? `${formatMonto(plan.precio_por_mes)}/mes · ${plan.cantidad_meses} meses`
+              : `${formatMonto(plan.monto_total)} total · ${formatMonto(plan.precio_por_mes)}/mes`}
+          </p>
+        </div>
+
+        {!editando && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setEditando(true)}
+            className="gap-1.5 text-slate-500 hover:text-slate-900 shrink-0"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Editar</span>
+          </Button>
+        )}
       </div>
 
-      {editando ? (
-        <div className="flex items-center gap-2">
-          <div className="space-y-1">
-            <Label className="text-xs">Precio/mes</Label>
-            <Input
-              type="number"
-              min={1}
-              value={precioMes}
-              onChange={e => setPrecioMes(e.target.value)}
-              className="h-8 w-28 text-sm"
-            />
-          </div>
-          {!esMensual && (
+      {editando && (
+        <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="space-y-1">
-              <Label className="text-xs">Total anual</Label>
+              <Label className="text-xs">Precio/mes</Label>
               <Input
                 type="number"
                 min={1}
-                value={montoTotal}
-                onChange={e => setMontoTotal(e.target.value)}
-                className="h-8 w-28 text-sm"
+                value={precioMes}
+                onChange={e => setPrecioMes(e.target.value)}
+                className="h-9 text-sm"
               />
             </div>
-          )}
-          <div className="flex gap-1 mt-4">
-            <Button
-              size="sm"
-              onClick={handleGuardar}
-              disabled={isPending}
-              className="h-8 px-2"
-            >
-              <Check className="h-3.5 w-3.5" />
-            </Button>
+            {!esMensual && (
+              <div className="space-y-1">
+                <Label className="text-xs">Total anual</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={montoTotal}
+                  onChange={e => setMontoTotal(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 justify-end">
             <Button
               size="sm"
               variant="outline"
               onClick={handleCancelar}
               disabled={isPending}
-              className="h-8 px-2"
+              className="gap-1.5"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3.5 w-3.5" /> Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleGuardar}
+              disabled={isPending}
+              className="gap-1.5"
+            >
+              <Check className="h-3.5 w-3.5" /> Guardar
             </Button>
           </div>
         </div>
-      ) : (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setEditando(true)}
-          className="gap-1.5 text-slate-500 hover:text-slate-900"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-          Editar
-        </Button>
       )}
     </div>
   )

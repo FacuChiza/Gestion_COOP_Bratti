@@ -72,8 +72,8 @@ export function DataExportPanel() {
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-slate-200 bg-white p-4">
-        <h3 className="font-medium mb-2">Filtros (para Aportes y Pagos)</h3>
-        <div className="flex flex-wrap items-center gap-2">
+        <h3 className="font-medium mb-2 text-sm sm:text-base">Filtros (para Aportes y Pagos)</h3>
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2">
           <select
             value={año}
             onChange={(e) => setAño(e.target.value)}
@@ -93,7 +93,7 @@ export function DataExportPanel() {
               <option key={m.v} value={m.v}>{m.l}</option>
             ))}
           </select>
-          <span className="text-xs text-slate-500 ml-2">
+          <span className="col-span-2 text-xs text-slate-500 sm:ml-2">
             Solo se aplican a los reportes de Aportes y Pagos.
           </span>
         </div>

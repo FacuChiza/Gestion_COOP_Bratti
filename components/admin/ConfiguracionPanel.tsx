@@ -71,9 +71,9 @@ function ConfigRow({ item }: { item: ConfiguracionItem }) {
   const sufijo = meta.tipo === 'porcentaje' ? '%' : meta.tipo === 'dia' ? '' : ''
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-2">
+    <div className="rounded-lg border border-slate-200 bg-white p-3 sm:p-4 space-y-2">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <p className="font-medium text-slate-900 text-sm">{meta.label}</p>
           {meta.descripcion && (
             <p className="text-xs text-slate-500 mt-1 flex items-start gap-1">
@@ -83,36 +83,40 @@ function ConfigRow({ item }: { item: ConfiguracionItem }) {
           )}
         </div>
 
-        {editando ? (
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1">
-              <Input
-                type={meta.tipo ? 'number' : 'text'}
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
-                className="h-8 w-24 text-sm"
-                min={0}
-              />
-              {sufijo && <span className="text-sm text-slate-500">{sufijo}</span>}
-            </div>
-            <Button size="sm" onClick={guardar} disabled={isPending} className="h-8 px-2">
-              <Check className="h-3.5 w-3.5" />
-            </Button>
-            <Button size="sm" variant="outline" onClick={cancelar} disabled={isPending} className="h-8 px-2">
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        ) : (
+        {!editando && (
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-sm font-mono text-slate-700 bg-slate-100 px-2 py-1 rounded">
               {item.valor}{sufijo}
             </span>
-            <Button size="sm" variant="ghost" onClick={() => setEditando(true)} className="h-8">
+            <Button size="sm" variant="ghost" onClick={() => setEditando(true)} className="h-8 w-8 p-0">
               <Pencil className="h-3.5 w-3.5" />
             </Button>
           </div>
         )}
       </div>
+
+      {editando && (
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center gap-1 flex-1 max-w-[200px]">
+            <Input
+              type={meta.tipo ? 'number' : 'text'}
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              className="h-9 text-sm"
+              min={0}
+            />
+            {sufijo && <span className="text-sm text-slate-500">{sufijo}</span>}
+          </div>
+          <Button size="sm" onClick={guardar} disabled={isPending} className="gap-1.5">
+            <Check className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Guardar</span>
+          </Button>
+          <Button size="sm" variant="outline" onClick={cancelar} disabled={isPending} className="gap-1.5">
+            <X className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Cancelar</span>
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

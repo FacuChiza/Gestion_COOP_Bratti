@@ -31,7 +31,13 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-slate-200 bg-white p-6 shadow-lg duration-200 rounded-lg',
+        // Mobile: ocupa casi toda la pantalla, anclado al fondo, max-h con scroll
+        // Desktop: centrado, ancho máximo
+        'fixed z-50 grid gap-4 border border-slate-200 bg-white shadow-lg duration-200',
+        // Mobile (default)
+        'inset-x-2 bottom-2 top-auto max-h-[95vh] overflow-y-auto rounded-2xl p-4',
+        // Desktop sm+
+        'sm:left-[50%] sm:top-[50%] sm:bottom-auto sm:inset-x-auto sm:translate-x-[-50%] sm:translate-y-[-50%] sm:w-full sm:max-w-lg sm:rounded-lg sm:p-6 sm:max-h-[90vh]',
         className
       )}
       {...props}

@@ -55,7 +55,7 @@ export function AddPagadorDialog({ open, onClose, planes }: Props) {
             <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b border-slate-100">
               Datos del pagador
             </h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1">
                 <Label htmlFor="nombre">Nombre completo *</Label>
                 <Input id="nombre" name="nombre" required placeholder="Ana García" />
@@ -84,7 +84,7 @@ export function AddPagadorDialog({ open, onClose, planes }: Props) {
             <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b border-slate-100">
               Datos del alumno
             </h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1">
                 <Label htmlFor="nombre_alumno">Nombre del alumno *</Label>
                 <Input id="nombre_alumno" name="nombre_alumno" required placeholder="Martín García" />

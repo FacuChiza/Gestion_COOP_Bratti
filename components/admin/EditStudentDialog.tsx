@@ -99,7 +99,7 @@ export function EditStudentDialog({ alumno, planes, open, onClose }: Props) {
             <Input value={nombre} onChange={(e) => setNombre(e.target.value)} />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label className="text-xs">Grado / Curso</Label>
               <Input value={grado} onChange={(e) => setGrado(e.target.value)} />
@@ -146,7 +146,7 @@ export function EditStudentDialog({ alumno, planes, open, onClose }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-slate-200">
           {alumno.activo ? (
             <Button variant="outline" onClick={desactivar} disabled={isPending} className="text-red-600 border-red-200 hover:bg-red-50">
               Desactivar alumno
@@ -158,8 +158,8 @@ export function EditStudentDialog({ alumno, planes, open, onClose }: Props) {
           )}
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose} disabled={isPending}>Cancelar</Button>
-            <Button onClick={guardar} disabled={isPending}>Guardar</Button>
+            <Button variant="outline" onClick={onClose} disabled={isPending} className="flex-1 sm:flex-none">Cancelar</Button>
+            <Button onClick={guardar} disabled={isPending} className="flex-1 sm:flex-none">Guardar</Button>
           </div>
         </div>
       </DialogContent>
