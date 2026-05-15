@@ -72,7 +72,12 @@ export function BuscarPagadorForm() {
               type="button"
               variant="outline"
               className="w-full gap-2"
-              onClick={() => router.push('/registro')}
+              onClick={() => {
+                // Pre-llenamos el DNI en el form de registro para que no lo
+                // tipee de nuevo. Solo dígitos por las dudas.
+                const dniLimpio = dni.replace(/\D/g, '')
+                router.push(`/registro?dni=${encodeURIComponent(dniLimpio)}`)
+              }}
             >
               <UserPlus className="h-4 w-4" />
               Registrarme con este DNI

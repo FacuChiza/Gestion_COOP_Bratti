@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { RegistroForm } from '@/components/registro/RegistroForm'
 import { Logo } from '@/components/Logo'
@@ -22,7 +23,11 @@ export default function RegistroPage() {
 
         <Card className="shadow-md">
           <CardContent className="pt-6">
-            <RegistroForm />
+            {/* RegistroForm usa useSearchParams (lee ?dni=...), tiene que ir
+                envuelto en Suspense para que Next 14 lo prerendere bien. */}
+            <Suspense>
+              <RegistroForm />
+            </Suspense>
           </CardContent>
         </Card>
 

@@ -22,7 +22,12 @@ export async function registrarPagadorPublico(
   const dni       = dniRaw.replace(/\D/g, '')
   const email     = (formData.get('email')    as string).trim().toLowerCase()
   const telefono  = (formData.get('telefono') as string).trim()
-  const password  = formData.get('password')  as string
+
+  // No pedimos password al usuario — el flujo de login es magic link.
+  // Generamos un password random largo para satisfacer el requirement
+  // de Supabase Auth. El padre nunca lo va a usar; si en algún momento
+  // quiere "loguearse con password", puede pedir reset desde Supabase.
+  const password = `${crypto.randomUUID()}-${crypto.randomUUID()}`
 
   // ── Datos del alumno ───────────────────────────────────────
   const nombreAlumno = (formData.get('nombre_alumno') as string).trim()
@@ -30,14 +35,11 @@ export async function registrarPagadorPublico(
   const turno        = formData.get('turno')           as string   // 'Mañana' | 'Tarde' | 'Noche'
   const tipoPago     = formData.get('tipo_pago')       as string   // 'suscripcion' | 'anual' | 'manual'
 
-  if (!nombre || !dni || !email || !telefono || !password || !nombreAlumno || !grado || !turno || !tipoPago) {
+  if (!nombre || !dni || !email || !telefono || !nombreAlumno || !grado || !turno || !tipoPago) {
     return { ok: false, error: 'Completá todos los campos.' }
   }
   if (dni.length < 6 || dni.length > 10) {
     return { ok: false, error: 'El DNI debe tener entre 6 y 10 dígitos.' }
-  }
-  if (password.length < 6) {
-    return { ok: false, error: 'La contraseña debe tener al menos 6 caracteres.' }
   }
   // Guardia: 'suscripcion' y 'anual' requieren MP configurado
   if ((tipoPago === 'suscripcion' || tipoPago === 'anual') && !mpConfigurado()) {

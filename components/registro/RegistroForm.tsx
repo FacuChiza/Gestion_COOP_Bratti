@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { Eye, EyeOff, CheckCircle2, Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,9 +36,9 @@ const PRECIOS = {
 }
 
 export function RegistroForm() {
+  const searchParams = useSearchParams()
   const [paso, setPaso]           = useState<1 | 2>(1)
   const [exito, setExito]         = useState(false)
-  const [showPass, setShowPass]   = useState(false)
   const [isPending, startTransition] = useTransition()
 
   // Paso 1
@@ -45,10 +46,19 @@ export function RegistroForm() {
   const [dni,          setDni]          = useState('')
   const [email,        setEmail]        = useState('')
   const [telefono,     setTelefono]     = useState('')
-  const [password,     setPassword]     = useState('')
   const [nombreAlumno, setNombreAlumno] = useState('')
   const [grado,        setGrado]        = useState('')
   const [turno,        setTurno]        = useState<string>('')
+
+  // Si vinimos de /pagar con ?dni=xxx, lo prellenamos para no hacerle
+  // tipearlo dos veces. El usuario igual puede modificarlo.
+  useEffect(() => {
+    const dniParam = searchParams.get('dni')
+    if (dniParam) {
+      const limpio = dniParam.replace(/\D/g, '').slice(0, 10)
+      if (limpio) setDni(limpio)
+    }
+  }, [searchParams])
 
   // DNI normalizado: solo dígitos (sin puntos ni espacios)
   const dniNormalizado = dni.replace(/\D/g, '')
@@ -102,7 +112,6 @@ export function RegistroForm() {
     dniValido &&
     email.trim() &&
     telefono.trim() &&
-    password.length >= 6 &&
     nombreAlumno.trim() &&
     grado &&
     turno
@@ -115,7 +124,6 @@ export function RegistroForm() {
     formData.set('dni',           dniNormalizado)  // siempre normalizado
     formData.set('email',         email)
     formData.set('telefono',      telefono)
-    formData.set('password',      password)
     formData.set('nombre_alumno', nombreAlumno)
     formData.set('grado',         grado)
     formData.set('turno',         turno)
@@ -148,13 +156,14 @@ export function RegistroForm() {
           Tu cuenta fue creada para <strong>{nombreAlumno}</strong>.
         </p>
         <p className="text-sm text-slate-500">
-          Ingresá con tu email y contraseña para ver el estado de tus aportes.
+          Para entrar al portal, pedís un enlace por mail. Sin contraseñas.
         </p>
         <a
           href="/cuenta"
-          className="inline-flex items-center justify-center h-9 px-6 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 transition-colors"
+          className="inline-flex items-center justify-center gap-2 h-10 px-6 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 transition-colors"
         >
-          Ir a mi cuenta →
+          <Sparkles className="h-4 w-4" />
+          Ir a mi portal
         </a>
       </div>
     )
@@ -245,28 +254,10 @@ export function RegistroForm() {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="password">Creá tu contraseña</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPass ? 'text' : 'password'}
-                  placeholder="Mínimo 6 caracteres"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  autoComplete="new-password"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              <p className="text-xs text-slate-400">
-                La vas a usar para ingresar a tu cuenta en el portal.
+            <div className="rounded-md bg-slate-50 border border-slate-200 px-3 py-2 flex items-start gap-2">
+              <Sparkles className="h-4 w-4 text-slate-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-slate-600">
+                <strong>Sin contraseñas.</strong> Para entrar a tu portal te vamos a mandar un enlace al mail cada vez que quieras ingresar.
               </p>
             </div>
           </div>
