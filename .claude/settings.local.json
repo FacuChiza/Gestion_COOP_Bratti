@@ -17,7 +17,9 @@
       "Bash(python -m pip install spotipy)",
       "WebSearch",
       "Bash(grep -E \"\\\\.\\(sql|md\\)$\")",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)"
     ]
   }
 }

@@ -13,13 +13,15 @@
 
 -- Pagadores (titulares que pagan: padres / tutores)
 create table if not exists pagadores (
-  id          uuid primary key default gen_random_uuid(),
-  nombre      text not null,
-  dni         text,
-  telefono    text,
-  mail        text unique not null,
-  notas       text,                          -- gestión interna del directivo
-  created_at  timestamptz default now()
+  id                    uuid primary key default gen_random_uuid(),
+  nombre                text not null,
+  dni                   text,
+  telefono              text,
+  mail                  text unique not null,
+  notas                 text,                       -- gestión interna del directivo
+  ultimo_aviso_mensual  date,                       -- anti-spam recordatorio (cron diario)
+  ultimo_aviso_deuda    date,                       -- anti-spam alerta morosidad (cron diario)
+  created_at            timestamptz default now()
 );
 
 -- Alumnos
@@ -113,7 +115,7 @@ create table if not exists configuracion (
 
 -- Configuración por defecto
 insert into configuracion(clave, valor) values
-  ('meses_alerta_deuda',           '4'),  -- umbral para alerta única WhatsApp
+  ('meses_alerta_deuda',           '3'),  -- umbral para alerta de morosidad (cron diario)
   ('descuento_maximo_porcentaje',  '20'),
   ('dia_vencimiento',              '10'),
   ('monto_cuota_diurno',           '1000'),

@@ -5,6 +5,8 @@ export type Pagador = {
   telefono: string | null
   mail: string
   notas: string | null
+  ultimo_aviso_mensual: string | null
+  ultimo_aviso_deuda:   string | null
   created_at: string
 }
 
