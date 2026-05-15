@@ -11,10 +11,12 @@
  */
 
 import { notFound } from 'next/navigation'
-import { CheckCircle2, AlertCircle, Clock, School, ArrowRight, Heart } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Clock, ArrowRight, Heart } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { crearPreferenciaMP, mpConfigurado } from '@/lib/mp'
 import { formatMonto, formatMes } from '@/lib/utils'
+import { Logo } from '@/components/Logo'
+import { ActivarDebitoButton } from '@/components/aporte/ActivarDebitoButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +26,7 @@ type Pagador = { id: string; nombre: string; mail: string }
 type Alumno  = { id: string; nombre: string; grado: string; turno: string | null }
 type Cuota   = { id: string; mes: number; año: number; monto: number; estado: string; alumno_id: string }
 type Plan    = { precio_por_mes: number; nombre: string }
-type Suscripcion = { id: string; alumno_id: string; estado: string; planes: Plan | null }
+type Suscripcion = { id: string; alumno_id: string; estado: string; tipo_pago: string; planes: Plan | null }
 
 // ─── Layout reutilizable ──────────────────────────────────────────────────────
 
@@ -32,11 +34,8 @@ function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-2 mb-5">
-          <div className="h-9 w-9 rounded-xl bg-slate-900 flex items-center justify-center">
-            <School className="h-5 w-5 text-white" />
-          </div>
-          <span className="font-semibold text-slate-900">Cooperadora Escolar</span>
+        <div className="flex items-center justify-center mb-5">
+          <Logo size={48} subtitulo="Cooperadora" />
         </div>
         {children}
       </div>
@@ -188,7 +187,7 @@ export default async function AporteExpressPage({
   // Suscripciones (para tener el plan / monto mensual)
   const { data: suscData } = await admin
     .from('suscripciones')
-    .select('id, alumno_id, estado, planes(precio_por_mes, nombre)')
+    .select('id, alumno_id, estado, tipo_pago, planes(precio_por_mes, nombre)')
     .in('alumno_id', alumnoIds)
     .in('estado', ['activa', 'pendiente'])
 
@@ -214,6 +213,11 @@ export default async function AporteExpressPage({
       </Layout>
     )
   }
+
+  // ¿Ya tiene débito automático activo en al menos un alumno?
+  const yaTieneDebitoAutomatico = suscripciones.some(
+    (s) => s.tipo_pago === 'suscripcion' && s.estado === 'activa',
+  )
 
   // Crear preferencia de pago
   const titulo = tienePendientes
@@ -331,7 +335,7 @@ export default async function AporteExpressPage({
             </span>
           </div>
 
-          {/* Botón MP */}
+          {/* Botón MP — pago puntual */}
           <a
             href={checkoutUrl}
             className="flex items-center justify-center gap-2 w-full h-12 rounded-xl bg-[#009EE3] hover:bg-[#0082BF] text-white font-semibold transition-colors"
@@ -339,6 +343,16 @@ export default async function AporteExpressPage({
             Colaborar con MercadoPago
             <ArrowRight className="h-4 w-4" />
           </a>
+
+          {/* Separador */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-px bg-slate-100" />
+            <span className="text-xs text-slate-400">o</span>
+            <div className="flex-1 h-px bg-slate-100" />
+          </div>
+
+          {/* Débito automático */}
+          <ActivarDebitoButton pagadorId={p.id} yaActivo={yaTieneDebitoAutomatico} />
 
           <p className="text-center text-xs text-slate-400">
             🔒 Vas a ser redirigido al sitio seguro de MercadoPago.<br />

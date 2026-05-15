@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
-import { LogOut, School, CheckCircle2, Clock, AlertCircle, CreditCard, Wallet, Minus } from 'lucide-react'
+import { LogOut, CheckCircle2, Clock, AlertCircle, CreditCard, Wallet, Minus } from 'lucide-react'
 import { getDashboardData, logoutAction } from '@/app/cuenta/actions'
 import { PaymentHistory } from '@/components/cuenta/PaymentHistory'
 import { DashboardClient } from '@/components/cuenta/DashboardClient'
+import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -51,13 +52,11 @@ export default async function DashboardPage() {
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center">
-              <School className="h-4 w-4 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900 text-sm leading-tight">Cooperadora</p>
-              <p className="text-xs text-slate-500 leading-tight">Hola, {pagador.nombre.split(' ')[0]}</p>
+          <div className="flex items-center gap-3">
+            <Logo size={36} subtitulo={null} />
+            <div className="leading-tight border-l border-slate-200 pl-3">
+              <p className="font-semibold text-slate-900 text-sm">Cooperadora</p>
+              <p className="text-xs text-slate-500">Hola, {pagador.nombre.split(' ')[0]}</p>
             </div>
           </div>
           <form action={logoutAction}>
@@ -97,7 +96,7 @@ export default async function DashboardPage() {
             </div>
             {mpActivo && (
               <Button className="w-full gap-2 bg-red-700 hover:bg-red-800" asChild>
-                <a href="/pagar?todo=1">
+                <a href="/cuenta/pagar?todo=1">
                   <CreditCard className="h-4 w-4" />
                   Pagar todo — {formatMonto(totalDeuda)}
                 </a>
@@ -187,7 +186,7 @@ export default async function DashboardPage() {
                   <div className="space-y-2">
                     {mpActivo ? (
                       <Button className="w-full gap-2" asChild>
-                        <a href={`/pagar?alumno=${alumno.id}`}>
+                        <a href={`/cuenta/pagar?alumno=${alumno.id}`}>
                           <CreditCard className="h-4 w-4" />
                           Realizar {cuotasDeuda} aporte{cuotasDeuda > 1 ? 's' : ''} — {formatMonto(
                             historial

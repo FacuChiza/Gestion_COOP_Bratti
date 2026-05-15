@@ -1,6 +1,6 @@
-import { School } from 'lucide-react'
 import { getAlumnosConEstado, getAlumnosConDeuda, getPlanes, getConfiguracion } from './actions'
 import { AdminTabs } from '@/components/admin/AdminTabs'
+import { Logo } from '@/components/Logo'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,11 +17,9 @@ export default async function AdminPage() {
       {/* Header */}
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-slate-900 flex items-center justify-center">
-              <School className="h-5 w-5 text-white" />
-            </div>
-            <div>
+          <div className="flex items-center gap-4">
+            <Logo size={42} subtitulo={null} />
+            <div className="border-l border-slate-200 pl-4">
               <h1 className="font-semibold text-slate-900">Panel Administrativo</h1>
               <p className="text-xs text-slate-500">Cooperadora Escolar</p>
             </div>

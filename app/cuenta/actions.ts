@@ -19,6 +19,50 @@ export async function loginAction(formData: FormData) {
   redirect('/cuenta/dashboard')
 }
 
+/**
+ * Magic link login: en lugar de pedir contraseña, le mandamos un mail con un
+ * enlace de un solo uso. Ideal para padres que no quieren recordar passwords.
+ *
+ * Requisito: en Supabase Dashboard → Authentication → URL Configuration →
+ * "Site URL" debe apuntar a NEXT_PUBLIC_APP_URL, y "Redirect URLs" debe
+ * incluir `${NEXT_PUBLIC_APP_URL}/cuenta/auth/callback`.
+ */
+export async function magicLinkAction(formData: FormData) {
+  const supabase = await createClient()
+  const email = (formData.get('email') as string ?? '').trim().toLowerCase()
+  if (!email) return { error: 'Ingresá tu email' }
+
+  // Solo dejamos entrar a emails que ya están dados de alta como pagador.
+  // Si no, cualquier persona podría pedir un magic link sin tener nada
+  // asignado en la base.
+  const admin = createAdminClient()
+  const { data: pagador } = await admin
+    .from('pagadores')
+    .select('id')
+    .eq('mail', email)
+    .maybeSingle()
+
+  if (!pagador) {
+    return { error: 'No encontramos una cuenta con ese email. Si te diste de alta hace poco, contactá a la cooperadora.' }
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: `${appUrl}/cuenta/auth/callback`,
+      shouldCreateUser: false, // no creamos cuentas nuevas, solo deja entrar a las existentes
+    },
+  })
+
+  if (error) {
+    console.error('[magicLink]', error)
+    return { error: 'No se pudo enviar el enlace. Probá de nuevo en unos minutos.' }
+  }
+
+  return { ok: true }
+}
+
 export async function logoutAction() {
   const supabase = await createClient()
   await supabase.auth.signOut()

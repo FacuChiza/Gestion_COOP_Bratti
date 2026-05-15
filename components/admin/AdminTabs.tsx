@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Users, UserPlus, Bell, Calendar, Settings, Database, Sliders, Receipt } from 'lucide-react'
+import { Users, UserPlus, Bell, Calendar, Settings, Database, Sliders, Receipt, QrCode } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { StudentList } from './StudentList'
@@ -12,6 +12,7 @@ import { PreciosPanel } from './PreciosPanel'
 import { DataExportPanel } from './DataExportPanel'
 import { ConfiguracionPanel } from './ConfiguracionPanel'
 import { PagosHistoryPanel } from './PagosHistoryPanel'
+import { QrPanel } from './QrPanel'
 import type { AlumnoConEstado, Plan, ConfiguracionItem } from '@/types'
 
 type AlumnoDeuda = {
@@ -63,6 +64,10 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: P
               <Database className="h-3.5 w-3.5" />
               Datos
             </TabsTrigger>
+            <TabsTrigger value="qr" className="gap-1.5">
+              <QrCode className="h-3.5 w-3.5" />
+              QR
+            </TabsTrigger>
             <TabsTrigger value="configuracion" className="gap-1.5">
               <Settings className="h-3.5 w-3.5" />
               Planes
@@ -97,6 +102,10 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: P
 
         <TabsContent value="datos">
           <DataExportPanel />
+        </TabsContent>
+
+        <TabsContent value="qr">
+          <QrPanel />
         </TabsContent>
 
         <TabsContent value="configuracion">

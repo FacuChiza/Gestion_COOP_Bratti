@@ -1,6 +1,6 @@
-import { School } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { RegistroForm } from '@/components/registro/RegistroForm'
+import { Logo } from '@/components/Logo'
 
 export const metadata = {
   title: 'Registrarse — Cooperadora Escolar',
@@ -13,11 +13,9 @@ export default function RegistroPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="h-11 w-11 rounded-xl bg-slate-900 flex items-center justify-center shadow">
-            <School className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <p className="font-bold text-slate-900 text-lg leading-tight">Cooperadora Escolar</p>
+          <Logo size={48} subtitulo={null} />
+          <div className="border-l border-slate-200 pl-3">
+            <p className="font-bold text-slate-900 text-lg leading-tight">Cooperadora</p>
             <p className="text-sm text-slate-500">Sumate y gestioná tus aportes desde el portal</p>
           </div>
         </div>
