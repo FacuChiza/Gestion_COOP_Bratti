@@ -42,12 +42,17 @@ export function RegistroForm() {
 
   // Paso 1
   const [nombre,       setNombre]       = useState('')
+  const [dni,          setDni]          = useState('')
   const [email,        setEmail]        = useState('')
   const [telefono,     setTelefono]     = useState('')
   const [password,     setPassword]     = useState('')
   const [nombreAlumno, setNombreAlumno] = useState('')
   const [grado,        setGrado]        = useState('')
   const [turno,        setTurno]        = useState<string>('')
+
+  // DNI normalizado: solo dígitos (sin puntos ni espacios)
+  const dniNormalizado = dni.replace(/\D/g, '')
+  const dniValido = dniNormalizado.length >= 6 && dniNormalizado.length <= 10
 
   // Paso 2
   const [tipoPago, setTipoPago] = useState<TipoPago | null>(null)
@@ -94,6 +99,7 @@ export function RegistroForm() {
 
   const paso1Valido =
     nombre.trim() &&
+    dniValido &&
     email.trim() &&
     telefono.trim() &&
     password.length >= 6 &&
@@ -106,6 +112,7 @@ export function RegistroForm() {
 
     const formData = new FormData()
     formData.set('nombre',        nombre)
+    formData.set('dni',           dniNormalizado)  // siempre normalizado
     formData.set('email',         email)
     formData.set('telefono',      telefono)
     formData.set('password',      password)
@@ -193,6 +200,25 @@ export function RegistroForm() {
                 onChange={e => setNombre(e.target.value)}
                 autoComplete="name"
               />
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="dni">DNI</Label>
+              <Input
+                id="dni"
+                type="text"
+                inputMode="numeric"
+                placeholder="20123456"
+                value={dni}
+                onChange={e => setDni(e.target.value)}
+                autoComplete="off"
+              />
+              {dni && !dniValido && (
+                <p className="text-xs text-amber-600">DNI debe tener entre 6 y 10 dígitos</p>
+              )}
+              <p className="text-xs text-slate-400">
+                Lo usás también para identificarte cuando vayas a pagar desde el QR de la escuela.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

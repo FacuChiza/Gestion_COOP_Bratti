@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, ArrowRight } from 'lucide-react'
+import { Search, ArrowRight, UserPlus, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,20 +11,28 @@ import { buscarPagadorPorDNI } from '@/app/pagar/actions'
 export function BuscarPagadorForm() {
   const [dni, setDni] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [noEncontrado, setNoEncontrado] = useState(false)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+
+  // Limpiamos el DNI a solo dígitos para mostrar el feedback de validación
+  const dniLimpio = dni.replace(/\D/g, '')
+  const dniValido = dniLimpio.length >= 6
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
+    setNoEncontrado(false)
     startTransition(async () => {
       const r = await buscarPagadorPorDNI(dni)
       if (r.error) {
         setError(r.error)
+        // Si el motivo del error es "no encontrado", activamos el atajo a registro
+        if (r.error.toLowerCase().includes('no encontramos')) {
+          setNoEncontrado(true)
+        }
         return
       }
-      // Redirigimos al link personal del pagador, que ya maneja el flujo
-      // completo (aportes pendientes, pago puntual, débito automático)
       router.push(`/aporte/${r.id}`)
     })
   }
@@ -40,9 +48,13 @@ export function BuscarPagadorForm() {
             type="text"
             inputMode="numeric"
             autoComplete="off"
-            placeholder="20.123.456"
+            placeholder="20123456"
             value={dni}
-            onChange={(e) => setDni(e.target.value)}
+            onChange={(e) => {
+              setDni(e.target.value)
+              setError(null)
+              setNoEncontrado(false)
+            }}
             className="pl-9"
             required
           />
@@ -50,12 +62,26 @@ export function BuscarPagadorForm() {
       </div>
 
       {error && (
-        <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">
-          {error}
-        </p>
+        <div className="space-y-2">
+          <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-100 rounded-md px-3 py-2">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <p>{error}</p>
+          </div>
+          {noEncontrado && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => router.push('/registro')}
+            >
+              <UserPlus className="h-4 w-4" />
+              Registrarme con este DNI
+            </Button>
+          )}
+        </div>
       )}
 
-      <Button type="submit" className="w-full gap-2" disabled={isPending || !dni}>
+      <Button type="submit" className="w-full gap-2" disabled={isPending || !dniValido}>
         {isPending ? 'Buscando...' : (
           <>
             Continuar <ArrowRight className="h-4 w-4" />

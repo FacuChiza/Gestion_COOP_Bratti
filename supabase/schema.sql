@@ -24,6 +24,12 @@ create table if not exists pagadores (
   created_at            timestamptz default now()
 );
 
+-- DNI único entre pagadores que sí lo tienen cargado (parcial index).
+-- Permite NULLs múltiples para registros viejos sin DNI cargado.
+create unique index if not exists pagadores_dni_unique
+  on pagadores (dni)
+  where dni is not null;
+
 -- Alumnos
 create table if not exists alumnos (
   id          uuid primary key default gen_random_uuid(),

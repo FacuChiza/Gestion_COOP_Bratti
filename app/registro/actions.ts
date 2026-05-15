@@ -17,6 +17,9 @@ export async function registrarPagadorPublico(
 
   // ── Datos del pagador ──────────────────────────────────────
   const nombre    = (formData.get('nombre')   as string).trim()
+  // DNI normalizado: solo dígitos. Lo usamos para login por QR.
+  const dniRaw    = (formData.get('dni')      as string ?? '').trim()
+  const dni       = dniRaw.replace(/\D/g, '')
   const email     = (formData.get('email')    as string).trim().toLowerCase()
   const telefono  = (formData.get('telefono') as string).trim()
   const password  = formData.get('password')  as string
@@ -27,8 +30,11 @@ export async function registrarPagadorPublico(
   const turno        = formData.get('turno')           as string   // 'Mañana' | 'Tarde' | 'Noche'
   const tipoPago     = formData.get('tipo_pago')       as string   // 'suscripcion' | 'anual' | 'manual'
 
-  if (!nombre || !email || !telefono || !password || !nombreAlumno || !grado || !turno || !tipoPago) {
+  if (!nombre || !dni || !email || !telefono || !password || !nombreAlumno || !grado || !turno || !tipoPago) {
     return { ok: false, error: 'Completá todos los campos.' }
+  }
+  if (dni.length < 6 || dni.length > 10) {
+    return { ok: false, error: 'El DNI debe tener entre 6 y 10 dígitos.' }
   }
   if (password.length < 6) {
     return { ok: false, error: 'La contraseña debe tener al menos 6 caracteres.' }
@@ -39,14 +45,25 @@ export async function registrarPagadorPublico(
   }
 
   // ── Verificar que el mail no esté registrado ya ────────────
-  const { data: existente } = await supabase
+  const { data: existenteMail } = await supabase
     .from('pagadores')
     .select('id')
     .eq('mail', email)
     .maybeSingle()
 
-  if (existente) {
+  if (existenteMail) {
     return { ok: false, error: 'Ya existe una cuenta con ese email. Podés ingresar desde el portal.' }
+  }
+
+  // ── Verificar que el DNI no esté registrado ya ─────────────
+  const { data: existenteDni } = await admin
+    .from('pagadores')
+    .select('id')
+    .eq('dni', dni)
+    .maybeSingle()
+
+  if (existenteDni) {
+    return { ok: false, error: 'Ya existe una cuenta con ese DNI. Si sos vos, ingresá desde el portal.' }
   }
 
   // ── Determinar plan según turno ────────────────────────────
@@ -96,7 +113,7 @@ export async function registrarPagadorPublico(
   // no está autenticado aún y RLS bloquearía las inserciones
   const { data: pagador, error: errPagador } = await admin
     .from('pagadores')
-    .insert({ nombre, mail: email, telefono })
+    .insert({ nombre, dni, mail: email, telefono })
     .select()
     .single()
 
