@@ -102,7 +102,8 @@ export function StudentList({ alumnos, planes = [] }: Props) {
         <span className="text-sm text-slate-500 ml-auto">{filtrados.length} estudiantes</span>
       </div>
 
-      <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
+      {/* Tabla en md+, cards en mobile */}
+      <div className="hidden md:block rounded-lg border border-slate-200 overflow-hidden bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
@@ -199,6 +200,96 @@ export function StudentList({ alumnos, planes = [] }: Props) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* ── Cards verticales en mobile ────────────────────────────── */}
+      <div className="md:hidden space-y-2">
+        {filtrados.length === 0 && (
+          <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-400">
+            No hay alumnos registrados
+          </div>
+        )}
+        {filtrados.map((alumno) => (
+          <div
+            key={alumno.id}
+            className={`rounded-lg border border-slate-200 bg-white p-3 space-y-2 ${
+              alumno.activo === false ? 'opacity-60' : ''
+            }`}
+          >
+            {/* Cabecera: nombre + acciones rápidas */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-slate-900 text-sm truncate">
+                  {alumno.nombre}
+                  {alumno.activo === false && (
+                    <span className="ml-1 text-xs text-slate-400 font-normal">(inactivo)</span>
+                  )}
+                </p>
+                <p className="text-xs text-slate-500 truncate">
+                  {alumno.grado}
+                  {alumno.turno && <span> · {alumno.turno}</span>}
+                </p>
+              </div>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <Button size="sm" variant="ghost" onClick={() => setAlumnoEdit(alumno)} className="h-7 w-7 p-0">
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                {alumno.pagadores && (
+                  <Button size="sm" variant="ghost" onClick={() => setPagadorEdit(alumno.pagadores!)} className="h-7 w-7 p-0">
+                    <UserCog className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Pagador */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500">Pagador</span>
+              <span className="text-slate-700 truncate ml-2">
+                {alumno.pagadores?.nombre ?? <span className="text-slate-400">—</span>}
+              </span>
+            </div>
+
+            {/* Estado del mes */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500">{formatMes(mesActual, añoActual)}</span>
+              <div className="flex items-center gap-2">
+                {estadoBadge(alumno.cuota_actual?.estado, !!alumno.suscripcion_activa)}
+                {alumno.cuota_actual && (
+                  <span className="text-xs text-slate-400">{formatMonto(alumno.cuota_actual.monto)}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Deuda */}
+            {alumno.cuotas_deuda > 0 && (
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                <span className="text-red-600 font-semibold">
+                  {alumno.cuotas_deuda} aporte{alumno.cuotas_deuda !== 1 ? 's' : ''} pendientes
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setAlumnoSeleccionado(alumno)}
+                  className="h-7 text-xs px-2"
+                >
+                  Registrar aporte
+                </Button>
+              </div>
+            )}
+
+            {/* Link pago */}
+            {alumno.pagador_id && (
+              <div className="pt-1 border-t border-slate-100">
+                <LinkPagoButton
+                  pagadorId={alumno.pagador_id}
+                  pagadorNombre={alumno.pagadores?.nombre}
+                  pagadorTelefono={alumno.pagadores?.telefono}
+                />
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {alumnoSeleccionado && (

@@ -24,17 +24,28 @@ export default async function AdminPage() {
     <div className="min-h-screen bg-slate-50">
       {/* ── Header con logo prominente ─────────────────────────────── */}
       <header className="bg-white border-b border-slate-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-6">
-              {/* Logo grande y prominente, que se luzca */}
-              <Logo size={92} subtitulo={null} />
-              <div className="border-l border-slate-200 pl-6 leading-tight">
-                <h1 className="font-bold text-slate-900 text-xl tracking-tight">Panel Administrativo</h1>
-                <p className="text-sm text-slate-500 mt-0.5">Cooperadora Escolar Aristides Bratti</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+              {/* Mobile: logo más chico (60), desktop: 92 */}
+              <div className="hidden sm:block">
+                <Logo size={92} subtitulo={null} />
+              </div>
+              <div className="sm:hidden">
+                <Logo size={56} subtitulo={null} />
+              </div>
+              <div className="border-l border-slate-200 pl-3 sm:pl-6 leading-tight min-w-0">
+                <h1 className="font-bold text-slate-900 text-base sm:text-xl tracking-tight truncate">
+                  Panel Administrativo
+                </h1>
+                <p className="hidden sm:block text-sm text-slate-500 mt-0.5">
+                  Cooperadora Escolar Aristides Bratti
+                </p>
+                <p className="sm:hidden text-xs text-slate-500">Cooperadora Bratti</p>
               </div>
             </div>
-            <div className="text-xs text-slate-500 capitalize">
+            {/* Fecha solo en desktop */}
+            <div className="hidden md:block text-xs text-slate-500 capitalize shrink-0">
               {new Date().toLocaleDateString('es-AR', {
                 weekday: 'long',
                 day: '2-digit',
@@ -72,9 +83,9 @@ export default async function AdminPage() {
 
 function StatBar({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
-    <div className="px-4 py-3 flex items-center justify-between md:flex-col md:items-start md:gap-0.5 transition-colors hover:bg-slate-50">
-      <span className="text-xs text-slate-500">{label}</span>
-      <span className={`text-xl md:text-2xl font-bold tabular-nums ${accent}`}>{value}</span>
+    <div className="px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-start gap-0 sm:gap-0.5 transition-colors hover:bg-slate-50">
+      <span className="text-[10px] sm:text-xs text-slate-500 leading-tight">{label}</span>
+      <span className={`text-lg sm:text-2xl font-bold tabular-nums ${accent}`}>{value}</span>
     </div>
   )
 }

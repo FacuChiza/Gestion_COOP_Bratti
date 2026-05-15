@@ -74,7 +74,8 @@ export function PagosHistoryPanel() {
         <span className="text-sm text-slate-500">{pagos.length} pagos</span>
       </div>
 
-      <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
+      {/* Tabla en md+ */}
+      <div className="hidden md:block rounded-lg border border-slate-200 overflow-hidden bg-white">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
@@ -147,6 +148,80 @@ export function PagosHistoryPanel() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* ── Cards en mobile ──────────────────────────────────────── */}
+      <div className="md:hidden space-y-2">
+        {loading && (
+          <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-slate-400">
+            Cargando...
+          </div>
+        )}
+        {!loading && pagos.length === 0 && (
+          <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-slate-400">
+            Sin pagos registrados
+          </div>
+        )}
+        {!loading && pagos.map((p) => (
+          <div
+            key={p.id}
+            className={`rounded-lg border border-slate-200 bg-white p-3 space-y-2 ${
+              p.anulado ? 'opacity-60 border-red-200' : ''
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className={`font-semibold text-sm text-slate-900 truncate ${p.anulado ? 'line-through' : ''}`}>
+                  {p.pagadores?.nombre ?? '—'}
+                </p>
+                <p className="text-xs text-slate-500">{fmtFecha(p.fecha)}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className={`font-bold text-sm tabular-nums ${p.anulado ? 'line-through text-slate-500' : 'text-slate-900'}`}>
+                  {formatMonto(p.monto)}
+                </p>
+                {metodoBadge(p.metodo)}
+              </div>
+            </div>
+
+            {p.cuotas_detalle.length > 0 && (
+              <div className="text-xs text-slate-600 space-y-0.5 pt-1 border-t border-slate-100">
+                {p.cuotas_detalle.slice(0, 2).map((c, i) => (
+                  <div key={i}>
+                    {formatMes(c.mes, c.año)}{c.alumno && ` · ${c.alumno}`}
+                  </div>
+                ))}
+                {p.cuotas_detalle.length > 2 && (
+                  <div className="text-slate-400">+{p.cuotas_detalle.length - 2} más</div>
+                )}
+              </div>
+            )}
+
+            {p.descuento > 0 && (
+              <div className="text-xs text-emerald-700">Descuento: {formatMonto(p.descuento)}</div>
+            )}
+
+            {p.anulado && p.motivo_anulacion && (
+              <div className="text-xs text-red-600 pt-1 border-t border-slate-100">
+                <strong>Anulado:</strong> {p.motivo_anulacion}
+              </div>
+            )}
+
+            {!p.anulado && (
+              <div className="pt-1 border-t border-slate-100">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setAnulando(p)}
+                  className="text-red-600 hover:bg-red-50 h-8 w-full justify-center gap-1.5 text-xs"
+                >
+                  <Ban className="h-3.5 w-3.5" />
+                  Anular pago
+                </Button>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {anulando && (
