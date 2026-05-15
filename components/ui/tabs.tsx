@@ -12,7 +12,10 @@ const TabsList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
-    className={cn('inline-flex h-9 items-center justify-center rounded-lg bg-slate-100 p-1 text-slate-500', className)}
+    className={cn(
+      'inline-flex h-12 items-center justify-center gap-1 rounded-xl bg-slate-100/80 p-1.5 text-slate-500 backdrop-blur-sm',
+      className,
+    )}
     {...props}
   />
 ))
@@ -25,8 +28,21 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow',
-      className
+      // Base
+      'group relative inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium select-none',
+      // Color base + transición
+      'text-slate-600 transition-all duration-200 ease-out',
+      // Hover (cuando NO está activo)
+      'hover:bg-white/60 hover:text-slate-900 hover:shadow-sm',
+      // Foco accesible
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-100',
+      // Disabled
+      'disabled:pointer-events-none disabled:opacity-50',
+      // Active state — destaca con fondo blanco, sombra suave y un sutil scale
+      'data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md data-[state=active]:scale-[1.02]',
+      // Active: subtle ring
+      'data-[state=active]:ring-1 data-[state=active]:ring-slate-200',
+      className,
     )}
     {...props}
   />
@@ -39,7 +55,12 @@ const TabsContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.Content
     ref={ref}
-    className={cn('mt-4 focus-visible:outline-none', className)}
+    className={cn(
+      // Animación de entrada cuando se activa el contenido
+      'mt-6 focus-visible:outline-none',
+      'data-[state=active]:animate-tab-enter',
+      className,
+    )}
     {...props}
   />
 ))

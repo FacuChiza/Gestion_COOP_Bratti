@@ -37,48 +37,54 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: P
   return (
     <>
       <Tabs defaultValue="alumnos">
-        <div className="flex items-center justify-between mb-4">
-          <TabsList>
-            <TabsTrigger value="alumnos" className="gap-1.5">
-              <Users className="h-3.5 w-3.5" />
-              Alumnos
-            </TabsTrigger>
-            <TabsTrigger value="alertas" className="gap-1.5">
-              <Bell className="h-3.5 w-3.5" />
-              Alertas
-              {alumnosConDeuda.length > 0 && (
-                <span className="ml-1 rounded-full bg-red-500 text-white text-xs px-1.5 py-0.5 leading-none">
-                  {alumnosConDeuda.length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="pagos" className="gap-1.5">
-              <Receipt className="h-3.5 w-3.5" />
-              Pagos
-            </TabsTrigger>
-            <TabsTrigger value="cron" className="gap-1.5">
-              <Calendar className="h-3.5 w-3.5" />
-              Cron mensual
-            </TabsTrigger>
-            <TabsTrigger value="datos" className="gap-1.5">
-              <Database className="h-3.5 w-3.5" />
-              Datos
-            </TabsTrigger>
-            <TabsTrigger value="qr" className="gap-1.5">
-              <QrCode className="h-3.5 w-3.5" />
-              QR
-            </TabsTrigger>
-            <TabsTrigger value="configuracion" className="gap-1.5">
-              <Settings className="h-3.5 w-3.5" />
-              Planes
-            </TabsTrigger>
-            <TabsTrigger value="parametros" className="gap-1.5">
-              <Sliders className="h-3.5 w-3.5" />
-              Parámetros
-            </TabsTrigger>
-          </TabsList>
+        {/* Barra superior: tabs (scroll horizontal en mobile) + acción primaria */}
+        <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+          <div className="flex-1 min-w-0 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <TabsList className="h-14 p-1.5 bg-white border border-slate-200 shadow-sm">
+              <TabsTrigger value="alumnos" className="gap-2 px-4 h-11">
+                <Users className="h-4 w-4" />
+                <span>Alumnos</span>
+              </TabsTrigger>
+              <TabsTrigger value="alertas" className="gap-2 px-4 h-11">
+                <Bell className="h-4 w-4" />
+                <span>Alertas</span>
+                {alumnosConDeuda.length > 0 && (
+                  <span className="ml-1 rounded-full bg-red-500 text-white text-[11px] font-semibold px-1.5 py-0.5 leading-none animate-pulse-soft">
+                    {alumnosConDeuda.length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="pagos" className="gap-2 px-4 h-11">
+                <Receipt className="h-4 w-4" />
+                <span>Pagos</span>
+              </TabsTrigger>
+              <TabsTrigger value="cron" className="gap-2 px-4 h-11">
+                <Calendar className="h-4 w-4" />
+                <span>Cron mensual</span>
+              </TabsTrigger>
+              <TabsTrigger value="datos" className="gap-2 px-4 h-11">
+                <Database className="h-4 w-4" />
+                <span>Datos</span>
+              </TabsTrigger>
+              <TabsTrigger value="qr" className="gap-2 px-4 h-11">
+                <QrCode className="h-4 w-4" />
+                <span>QR</span>
+              </TabsTrigger>
+              <TabsTrigger value="configuracion" className="gap-2 px-4 h-11">
+                <Settings className="h-4 w-4" />
+                <span>Planes</span>
+              </TabsTrigger>
+              <TabsTrigger value="parametros" className="gap-2 px-4 h-11">
+                <Sliders className="h-4 w-4" />
+                <span>Parámetros</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
+          <Button
+            onClick={() => setAddDialogOpen(true)}
+            className="gap-2 h-11 px-5 shadow-sm hover:shadow-md transition-shadow shrink-0"
+          >
             <UserPlus className="h-4 w-4" />
             Nuevo pagador/alumno
           </Button>

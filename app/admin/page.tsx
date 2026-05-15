@@ -4,6 +4,10 @@ import { Logo } from '@/components/Logo'
 
 export const dynamic = 'force-dynamic'
 
+export const metadata = {
+  title: 'Panel Administrativo',
+}
+
 export default async function AdminPage() {
   const [alumnos, alumnosConDeuda, planes, configuracion] = await Promise.all([
     getAlumnosConEstado(),
@@ -12,56 +16,49 @@ export default async function AdminPage() {
     getConfiguracion(),
   ])
 
+  const alumnosActivos    = alumnos.filter((a) => a.activo !== false)
+  const aportesRealizados = alumnosActivos.filter((a) => a.cuota_actual?.estado === 'pagada').length
+  const aportesPendientes = alumnosActivos.filter((a) => a.cuota_actual?.estado === 'pendiente').length
+
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Logo size={42} subtitulo={null} />
-            <div className="border-l border-slate-200 pl-4">
-              <h1 className="font-semibold text-slate-900">Panel Administrativo</h1>
-              <p className="text-xs text-slate-500">Cooperadora Escolar</p>
+      {/* ── Header con logo prominente ─────────────────────────────── */}
+      <header className="bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-5">
+              {/* Logo grande, sin recuadro, que se luzca */}
+              <Logo size={64} subtitulo={null} />
+              <div className="border-l border-slate-200 pl-5 leading-tight">
+                <h1 className="font-bold text-slate-900 text-lg">Panel Administrativo</h1>
+                <p className="text-xs text-slate-500">Cooperadora Escolar Aristides Bratti</p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-slate-500">
-            <span>
+            <div className="text-xs text-slate-500 capitalize">
               {new Date().toLocaleDateString('es-AR', {
                 weekday: 'long',
-                year: 'numeric',
+                day: '2-digit',
                 month: 'long',
-                day: 'numeric',
+                year: 'numeric',
               })}
-            </span>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Estadísticas rápidas */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <StatCard
-            label="Alumnos activos"
-            value={alumnos.filter((a) => a.activo !== false).length}
-            color="text-slate-900"
-          />
-          <StatCard
-            label="Aportes realizados este mes"
-            value={alumnos.filter((a) => a.activo !== false && a.cuota_actual?.estado === 'pagada').length}
-            color="text-emerald-600"
-          />
-          <StatCard
-            label="Aportes pendientes"
-            value={alumnos.filter((a) => a.activo !== false && a.cuota_actual?.estado === 'pendiente').length}
-            color="text-amber-600"
-          />
-          <StatCard
-            label="Con 3+ aportes pendientes"
-            value={alumnosConDeuda.length}
-            color="text-red-600"
-          />
+
+        {/* ── Stats compactas, en una franja horizontal ───────────── */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
+          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-slate-100">
+            <StatBar label="Alumnos activos"         value={alumnosActivos.length}     accent="text-slate-900" />
+            <StatBar label="Aportes este mes"        value={aportesRealizados}         accent="text-emerald-600" />
+            <StatBar label="Aportes pendientes"      value={aportesPendientes}         accent="text-amber-600" />
+            <StatBar label="Con 3+ aportes pendientes" value={alumnosConDeuda.length}  accent="text-red-600" />
+          </div>
         </div>
 
+        {/* ── Tabs principales del panel ───────────────────────────── */}
         <AdminTabs
           alumnos={alumnos}
           alumnosConDeuda={alumnosConDeuda}
@@ -73,11 +70,11 @@ export default async function AdminPage() {
   )
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+function StatBar({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
-    <div className="bg-white rounded-lg border border-slate-200 px-4 py-3 shadow-sm">
-      <p className="text-xs text-slate-500 mb-1">{label}</p>
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
+    <div className="px-4 py-3 flex items-center justify-between md:flex-col md:items-start md:gap-0.5 transition-colors hover:bg-slate-50">
+      <span className="text-xs text-slate-500">{label}</span>
+      <span className={`text-xl md:text-2xl font-bold tabular-nums ${accent}`}>{value}</span>
     </div>
   )
 }
