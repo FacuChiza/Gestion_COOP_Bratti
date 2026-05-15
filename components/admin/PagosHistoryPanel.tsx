@@ -57,21 +57,21 @@ export function PagosHistoryPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-1.5 text-sm text-slate-600">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <label className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-600 whitespace-nowrap">
           <input
             type="checkbox"
             checked={verAnulados}
             onChange={(e) => setVerAnulados(e.target.checked)}
             className="h-3.5 w-3.5 rounded border-slate-300"
           />
-          Mostrar pagos anulados
+          Mostrar anulados
         </label>
-        <Button variant="outline" size="sm" onClick={cargar} className="gap-2 ml-auto">
+        <span className="text-xs sm:text-sm text-slate-500 whitespace-nowrap">{pagos.length} pagos</span>
+        <Button variant="outline" size="sm" onClick={cargar} className="gap-1.5 ml-auto">
           <RefreshCw className="h-3.5 w-3.5" />
-          Refrescar
+          <span className="hidden sm:inline">Refrescar</span>
         </Button>
-        <span className="text-sm text-slate-500">{pagos.length} pagos</span>
       </div>
 
       {/* Tabla en md+ */}

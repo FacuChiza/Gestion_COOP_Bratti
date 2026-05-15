@@ -95,10 +95,11 @@ export default async function DashboardPage() {
               </div>
             </div>
             {mpActivo && (
-              <Button className="w-full gap-2 bg-red-700 hover:bg-red-800" asChild>
-                <a href="/cuenta/pagar?todo=1">
-                  <CreditCard className="h-4 w-4" />
-                  Pagar todo — {formatMonto(totalDeuda)}
+              <Button className="w-full gap-2 h-auto py-2.5 whitespace-normal bg-red-700 hover:bg-red-800" asChild>
+                <a href="/cuenta/pagar?todo=1" className="flex items-center gap-2 text-sm">
+                  <CreditCard className="h-4 w-4 shrink-0" />
+                  <span>Pagar todo</span>
+                  <span className="font-bold ml-auto tabular-nums shrink-0">{formatMonto(totalDeuda)}</span>
                 </a>
               </Button>
             )}
@@ -127,22 +128,24 @@ export default async function DashboardPage() {
             <Card key={alumno.id} className="overflow-hidden">
               {/* Cabecera del alumno */}
               <CardHeader className="pb-3 border-b border-slate-100">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-base">{alumno.nombre}</CardTitle>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                <div className="flex items-start justify-between gap-2 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-base truncate">{alumno.nombre}</CardTitle>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">
                       {alumno.grado}{alumno.turno ? ` · Turno ${alumno.turno}` : ''}
                     </p>
                   </div>
-                  {tipoPago === 'suscripcion' ? (
-                    suscripcion?.mp_status === 'activa'
-                      ? <Badge variant="success">Aporte automático ✓</Badge>
-                      : <Badge variant="warning">Aporte automático pendiente</Badge>
-                  ) : tipoPago === 'anual' ? (
-                    <Badge variant="secondary">Aporte anual</Badge>
-                  ) : (
-                    <Badge variant="secondary">Aporte mensual</Badge>
-                  )}
+                  <div className="shrink-0">
+                    {tipoPago === 'suscripcion' ? (
+                      suscripcion?.mp_status === 'activa'
+                        ? <Badge variant="success">Aporte automático ✓</Badge>
+                        : <Badge variant="warning">Auto. pendiente</Badge>
+                    ) : tipoPago === 'anual' ? (
+                      <Badge variant="secondary">Anual</Badge>
+                    ) : (
+                      <Badge variant="secondary">Mensual</Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
 
@@ -185,14 +188,19 @@ export default async function DashboardPage() {
                 {cuotasDeuda > 0 && (
                   <div className="space-y-2">
                     {mpActivo ? (
-                      <Button className="w-full gap-2" asChild>
-                        <a href={`/cuenta/pagar?alumno=${alumno.id}`}>
-                          <CreditCard className="h-4 w-4" />
-                          Realizar {cuotasDeuda} aporte{cuotasDeuda > 1 ? 's' : ''} — {formatMonto(
-                            historial
-                              .filter(c => c.estado === 'pendiente' || c.estado === 'vencida')
-                              .reduce((acc, c) => acc + c.monto, 0)
-                          )}
+                      <Button className="w-full gap-2 h-auto py-2.5 whitespace-normal" asChild>
+                        <a href={`/cuenta/pagar?alumno=${alumno.id}`} className="flex items-center gap-2 text-sm">
+                          <CreditCard className="h-4 w-4 shrink-0" />
+                          <span className="text-left">
+                            Realizar {cuotasDeuda} aporte{cuotasDeuda > 1 ? 's' : ''}
+                          </span>
+                          <span className="font-bold ml-auto shrink-0 tabular-nums">
+                            {formatMonto(
+                              historial
+                                .filter(c => c.estado === 'pendiente' || c.estado === 'vencida')
+                                .reduce((acc, c) => acc + c.monto, 0),
+                            )}
+                          </span>
                         </a>
                       </Button>
                     ) : (

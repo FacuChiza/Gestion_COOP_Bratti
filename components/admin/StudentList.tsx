@@ -57,49 +57,55 @@ export function StudentList({ alumnos, planes = [] }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="space-y-2">
+        {/* Búsqueda — siempre full width arriba */}
         <input
           type="text"
           placeholder="Buscar por nombre..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="flex h-9 w-full max-w-xs rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          className="flex h-9 w-full sm:max-w-xs rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
         />
 
-        {/* Filtro por curso */}
-        <select
-          value={cursoFiltro}
-          onChange={e => setCursoFiltro(e.target.value)}
-          className="h-9 rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-        >
-          <option value="">Todos los cursos</option>
-          {cursos.filter(Boolean).map(c => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+        {/* Filtros + toggle + contador en una sola línea responsive */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Filtro por curso */}
+          <select
+            value={cursoFiltro}
+            onChange={e => setCursoFiltro(e.target.value)}
+            className="h-9 flex-1 min-w-[140px] sm:flex-none rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          >
+            <option value="">Todos los cursos</option>
+            {cursos.filter(Boolean).map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
 
-        {/* Filtro por turno */}
-        <select
-          value={turnoFiltro}
-          onChange={e => setTurnoFiltro(e.target.value)}
-          className="h-9 rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-        >
-          <option value="">Todos los turnos</option>
-          <option value="Mañana">Mañana</option>
-          <option value="Noche">Noche</option>
-        </select>
+          {/* Filtro por turno */}
+          <select
+            value={turnoFiltro}
+            onChange={e => setTurnoFiltro(e.target.value)}
+            className="h-9 flex-1 min-w-[140px] sm:flex-none rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+          >
+            <option value="">Todos los turnos</option>
+            <option value="Mañana">Mañana</option>
+            <option value="Noche">Noche</option>
+          </select>
 
-        <label className="flex items-center gap-1.5 text-xs text-slate-600 ml-1">
-          <input
-            type="checkbox"
-            checked={mostrarInactivos}
-            onChange={(e) => setMostrarInactivos(e.target.checked)}
-            className="h-3.5 w-3.5 rounded border-slate-300"
-          />
-          Mostrar inactivos
-        </label>
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={mostrarInactivos}
+              onChange={(e) => setMostrarInactivos(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-slate-300"
+            />
+            Mostrar inactivos
+          </label>
 
-        <span className="text-sm text-slate-500 ml-auto">{filtrados.length} estudiantes</span>
+          <span className="text-xs sm:text-sm text-slate-500 ml-auto whitespace-nowrap">
+            {filtrados.length} estudiantes
+          </span>
+        </div>
       </div>
 
       {/* Tabla en md+, cards en mobile */}

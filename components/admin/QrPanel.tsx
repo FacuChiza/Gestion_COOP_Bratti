@@ -9,36 +9,29 @@ import { Button } from '@/components/ui/button'
  *
  * El QR apunta a /pagar (página pública con buscador por DNI). Lo genera
  * api.qrserver.com — no necesita librería ni pagar nada.
- *
- * Para imprimirlo: botón "Descargar PNG" → guarda el archivo. Después se
- * imprime y pega en la cartelera de la escuela.
  */
 export function QrPanel() {
   const [copiado, setCopiado] = useState(false)
 
   // Detectar dominio actual del lado del cliente. SSR no tiene window.
-  const baseUrl =
-    typeof window !== 'undefined'
-      ? window.location.origin
-      : ''
-
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const urlPagar = baseUrl ? `${baseUrl}/pagar` : '/pagar'
-  const tamanoQR = 600
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${tamanoQR}x${tamanoQR}&data=${encodeURIComponent(urlPagar)}&margin=20`
+  // El QR se baja en alta resolución para que se imprima nítido aunque se
+  // muestre más chico en pantalla.
+  const qrDownloadUrl = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(urlPagar)}&margin=20`
+  const qrDisplayUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(urlPagar)}&margin=10`
 
   const copiar = async () => {
     try {
       await navigator.clipboard.writeText(urlPagar)
       setCopiado(true)
       setTimeout(() => setCopiado(false), 2000)
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   const descargar = () => {
     const a = document.createElement('a')
-    a.href = qrUrl
+    a.href = qrDownloadUrl
     a.download = 'qr-cooperadora-bratti.png'
     a.target = '_blank'
     a.rel = 'noopener'
@@ -48,53 +41,55 @@ export function QrPanel() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
       {/* Panel principal: el QR */}
-      <div className="rounded-lg border border-slate-200 bg-white p-6 flex flex-col items-center justify-center">
-        <div className="bg-white rounded-lg p-4 border border-slate-100">
+      <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-6 flex flex-col items-center justify-center">
+        <div className="bg-white rounded-lg p-2 sm:p-4 border border-slate-100 w-full max-w-[280px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={qrUrl}
+            src={qrDisplayUrl}
             alt="QR de la cooperadora"
-            width={300}
-            height={300}
-            className="w-[300px] h-[300px]"
+            className="w-full h-auto block"
           />
         </div>
-        <p className="mt-4 text-xs text-slate-500 text-center max-w-xs">
+        <p className="mt-3 sm:mt-4 text-xs text-slate-500 text-center max-w-xs">
           Cualquier padre que escanee este QR llega a la página para realizar su aporte
           ingresando su DNI.
         </p>
       </div>
 
       {/* Acciones e info */}
-      <div className="space-y-4">
-        <div className="rounded-lg border border-slate-200 bg-white p-5 space-y-3">
-          <h3 className="font-semibold text-slate-900">Imprimirlo y pegarlo en la escuela</h3>
-          <p className="text-sm text-slate-600">
-            Descargá el QR en alta resolución, lo imprimís y lo colocás en la cartelera de
-            la cooperadora. Cualquiera lo puede escanear desde su celular para pagar.
+      <div className="space-y-3 sm:space-y-4">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 space-y-3">
+          <h3 className="font-semibold text-slate-900 text-sm sm:text-base">
+            Imprimirlo y pegarlo en la escuela
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-600">
+            Descargá el QR en alta resolución, imprimilo y colocalo en la cartelera.
           </p>
           <Button onClick={descargar} className="w-full gap-2">
-            <Download className="h-4 w-4" />
-            Descargar QR (PNG alta resolución)
+            <Download className="h-4 w-4 shrink-0" />
+            <span className="truncate">Descargar QR</span>
           </Button>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-5 space-y-3">
-          <h3 className="font-semibold text-slate-900">O compartir el link directo</h3>
-          <p className="text-sm text-slate-600">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 space-y-3">
+          <h3 className="font-semibold text-slate-900 text-sm sm:text-base">
+            O compartir el link directo
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-600">
             Si preferís mandarlo por WhatsApp o email, copiá el link:
           </p>
-          <div className="flex gap-2">
-            <code className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-slate-700 break-all">
+          {/* En mobile: link arriba, botón abajo. En desktop: lado a lado. */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <code className="flex-1 min-w-0 text-xs bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-slate-700 break-all">
               {urlPagar}
             </code>
-            <Button variant="outline" size="sm" onClick={copiar} className="gap-1.5 shrink-0">
+            <Button variant="outline" size="sm" onClick={copiar} className="gap-1.5 sm:shrink-0 sm:w-auto">
               {copiado ? (
                 <><Check className="h-3.5 w-3.5 text-emerald-600" /> Copiado</>
               ) : (
-                <><Copy className="h-3.5 w-3.5" /> Copiar</>
+                <><Copy className="h-3.5 w-3.5" /> Copiar link</>
               )}
             </Button>
           </div>
@@ -104,16 +99,15 @@ export function QrPanel() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900"
           >
-            <ExternalLink className="h-3 w-3" />
-            Abrir en una nueva pestaña para probarlo
+            <ExternalLink className="h-3 w-3 shrink-0" />
+            <span>Abrir para probarlo</span>
           </a>
         </div>
 
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 sm:p-4">
           <p className="text-xs text-amber-800">
-            <strong>Tip:</strong> El padre solo necesita su DNI para identificarse.
-            Si todavía no está dado de alta como pagador, le aparece un mensaje
-            invitándolo a registrarse primero.
+            <strong>Tip:</strong> el padre solo necesita su DNI para identificarse.
+            Si no está dado de alta, le aparece un mensaje invitándolo a registrarse.
           </p>
         </div>
       </div>
