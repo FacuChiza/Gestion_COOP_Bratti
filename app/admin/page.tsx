@@ -26,12 +26,12 @@ export default async function AdminPage() {
       <header className="bg-white border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-5">
-              {/* Logo grande, sin recuadro, que se luzca */}
-              <Logo size={64} subtitulo={null} />
-              <div className="border-l border-slate-200 pl-5 leading-tight">
-                <h1 className="font-bold text-slate-900 text-lg">Panel Administrativo</h1>
-                <p className="text-xs text-slate-500">Cooperadora Escolar Aristides Bratti</p>
+            <div className="flex items-center gap-6">
+              {/* Logo grande y prominente, que se luzca */}
+              <Logo size={92} subtitulo={null} />
+              <div className="border-l border-slate-200 pl-6 leading-tight">
+                <h1 className="font-bold text-slate-900 text-xl tracking-tight">Panel Administrativo</h1>
+                <p className="text-sm text-slate-500 mt-0.5">Cooperadora Escolar Aristides Bratti</p>
               </div>
             </div>
             <div className="text-xs text-slate-500 capitalize">

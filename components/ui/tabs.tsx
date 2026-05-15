@@ -13,7 +13,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      'inline-flex h-12 items-center justify-center gap-1 rounded-xl bg-slate-100/80 p-1.5 text-slate-500 backdrop-blur-sm',
+      'inline-flex h-12 items-center justify-center gap-1 rounded-xl bg-slate-200/70 p-1.5 text-slate-600',
       className,
     )}
     {...props}
@@ -32,16 +32,14 @@ const TabsTrigger = React.forwardRef<
       'group relative inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium select-none',
       // Color base + transición
       'text-slate-600 transition-all duration-200 ease-out',
-      // Hover (cuando NO está activo)
-      'hover:bg-white/60 hover:text-slate-900 hover:shadow-sm',
+      // Hover (cuando NO está activo): aclara con blanco translúcido
+      'hover:bg-white/70 hover:text-slate-900',
       // Foco accesible
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-100',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-100',
       // Disabled
       'disabled:pointer-events-none disabled:opacity-50',
-      // Active state — destaca con fondo blanco, sombra suave y un sutil scale
-      'data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-md data-[state=active]:scale-[1.02]',
-      // Active: subtle ring
-      'data-[state=active]:ring-1 data-[state=active]:ring-slate-200',
+      // Active state — fondo OSCURO con texto blanco para máximo contraste
+      'data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-[1.02]',
       className,
     )}
     {...props}

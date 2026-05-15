@@ -40,7 +40,7 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: P
         {/* Barra superior: tabs (scroll horizontal en mobile) + acción primaria */}
         <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
           <div className="flex-1 min-w-0 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-            <TabsList className="h-14 p-1.5 bg-white border border-slate-200 shadow-sm">
+            <TabsList className="h-14 p-1.5 shadow-sm">
               <TabsTrigger value="alumnos" className="gap-2 px-4 h-11">
                 <Users className="h-4 w-4" />
                 <span>Alumnos</span>
