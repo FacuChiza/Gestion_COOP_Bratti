@@ -99,7 +99,7 @@ export async function activarDebitoAutomatico(pagadorId: string): Promise<{
       suscripcionId: nuevaSusc.id,
     })
 
-    if (mp) {
+    if (mp.ok) {
       // Guardamos el preapproval_id para el webhook
       await admin
         .from('suscripciones')
@@ -108,11 +108,15 @@ export async function activarDebitoAutomatico(pagadorId: string): Promise<{
 
       if (!primeraInitPoint) primeraInitPoint = mp.init_point
       creadas++
+    } else {
+      console.error('[activarDebito] MP rechazó preapproval:', mp.error)
+      // Borramos la suscripción huérfana para no contaminar la base
+      await admin.from('suscripciones').delete().eq('id', nuevaSusc.id)
     }
   }
 
   if (creadas === 0) {
-    return { error: 'No se pudo iniciar el débito automático. Probá de nuevo o acercate a la cooperadora.' }
+    return { error: 'No se pudo iniciar el débito automático con MercadoPago. Probá más tarde o acercate a la cooperadora.' }
   }
 
   return {

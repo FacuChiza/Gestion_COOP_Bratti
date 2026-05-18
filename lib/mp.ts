@@ -7,6 +7,10 @@
  *   MP_WEBHOOK_SECRET → string secreto para validar webhooks
  *   NEXT_PUBLIC_APP_URL → https://tu-dominio.vercel.app
  * ─────────────────────────────────────────────────────────────
+ *
+ * Todos los wrappers de MP devuelven un objeto con `ok` booleano para que
+ * el caller pueda saber si fue exitoso y mostrar el error específico.
+ * Antes devolvían `null` en error y eso hacía imposible diagnosticar.
  */
 
 const BASE_URL = 'https://api.mercadopago.com'
@@ -23,6 +27,16 @@ export function mpConfigurado(): boolean {
   return !!process.env.MP_ACCESS_TOKEN && !!process.env.MP_PUBLIC_KEY
 }
 
+// ── Tipos de retorno ──────────────────────────────────────────────────────────
+
+export type MpPreapprovalResult =
+  | { ok: true;  id: string; init_point: string }
+  | { ok: false; error: string }
+
+export type MpPreferenceResult =
+  | { ok: true;  id: string; init_point: string; sandbox_init_point: string }
+  | { ok: false; error: string }
+
 // ── Suscripción mensual automática (Preapproval) ──────────────────────────────
 
 export async function crearSuscripcionMP(params: {
@@ -31,13 +45,25 @@ export async function crearSuscripcionMP(params: {
   monto: number
   planNombre: string
   suscripcionId: string
-}): Promise<{ id: string; init_point: string } | null> {
-  if (!mpConfigurado()) return null
+  /** URL a la que MP redirige después de cargar la tarjeta. */
+  backUrl?: string
+}): Promise<MpPreapprovalResult> {
+  if (!mpConfigurado()) {
+    return { ok: false, error: 'MercadoPago no está configurado en el servidor.' }
+  }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    return { ok: false, error: 'NEXT_PUBLIC_APP_URL no está configurada.' }
+  }
+
+  // back_url debe ser pública (sin login requerido) y HTTPS válida.
+  // Usamos /aporte/[pagadorId] como destino seguro, sino el dashboard
+  // de la cooperadora como fallback.
+  const backUrl = params.backUrl ?? `${appUrl}/cuenta`
 
   const body = {
-    reason: `Cooperadora Escolar - ${params.planNombre}`,
+    reason: `Cooperadora Escolar Bratti - ${params.planNombre}`,
     external_reference: params.suscripcionId,
     payer_email: params.pagadorEmail,
     auto_recurring: {
@@ -46,19 +72,37 @@ export async function crearSuscripcionMP(params: {
       transaction_amount: params.monto,
       currency_id: 'ARS',
     },
-    back_url: `${appUrl}/cuenta/dashboard`,
+    back_url: backUrl,
     status: 'pending',
   }
 
-  const res = await fetch(`${BASE_URL}/preapproval`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify(body),
-  })
+  try {
+    const res = await fetch(`${BASE_URL}/preapproval`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(body),
+    })
 
-  if (!res.ok) return null
-  const data = await res.json()
-  return { id: data.id, init_point: data.init_point }
+    const raw = await res.text()
+    let data: { id?: string; init_point?: string; message?: string; error?: string; cause?: unknown }
+    try {
+      data = JSON.parse(raw)
+    } catch {
+      console.error('[MP preapproval] respuesta no-JSON:', raw)
+      return { ok: false, error: `MP devolvió una respuesta inesperada (HTTP ${res.status}).` }
+    }
+
+    if (!res.ok || !data.id || !data.init_point) {
+      const msg = data.message || data.error || `HTTP ${res.status}`
+      console.error('[MP preapproval] error:', { status: res.status, body, response: data })
+      return { ok: false, error: `MercadoPago rechazó la suscripción: ${msg}` }
+    }
+
+    return { ok: true, id: data.id, init_point: data.init_point }
+  } catch (err) {
+    console.error('[MP preapproval] excepción:', err)
+    return { ok: false, error: 'No se pudo conectar con MercadoPago. Intentá de nuevo en unos minutos.' }
+  }
 }
 
 // ── Pago único (anual o mensual manual) ──────────────────────────────────────
@@ -74,10 +118,16 @@ export async function crearPreferenciaMP(params: {
    * Útil para el flujo express donde queremos volver a /aporte/[id].
    */
   backUrlBase?: string
-}): Promise<{ id: string; init_point: string; sandbox_init_point: string } | null> {
-  if (!mpConfigurado()) return null
+}): Promise<MpPreferenceResult> {
+  if (!mpConfigurado()) {
+    return { ok: false, error: 'MercadoPago no está configurado en el servidor.' }
+  }
 
-  const appUrl  = process.env.NEXT_PUBLIC_APP_URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    return { ok: false, error: 'NEXT_PUBLIC_APP_URL no está configurada.' }
+  }
+
   const baseRet = params.backUrlBase ?? `${appUrl}/cuenta/dashboard`
 
   const body = {
@@ -98,14 +148,38 @@ export async function crearPreferenciaMP(params: {
     notification_url: `${appUrl}/api/webhooks/mp`,
   }
 
-  const res = await fetch(`${BASE_URL}/checkout/preferences`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify(body),
-  })
+  try {
+    const res = await fetch(`${BASE_URL}/checkout/preferences`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(body),
+    })
 
-  if (!res.ok) return null
-  return res.json()
+    const raw = await res.text()
+    let data: { id?: string; init_point?: string; sandbox_init_point?: string; message?: string; error?: string }
+    try {
+      data = JSON.parse(raw)
+    } catch {
+      console.error('[MP preference] respuesta no-JSON:', raw)
+      return { ok: false, error: `MP devolvió una respuesta inesperada (HTTP ${res.status}).` }
+    }
+
+    if (!res.ok || !data.id || !data.init_point) {
+      const msg = data.message || data.error || `HTTP ${res.status}`
+      console.error('[MP preference] error:', { status: res.status, body, response: data })
+      return { ok: false, error: `MercadoPago rechazó el pago: ${msg}` }
+    }
+
+    return {
+      ok: true,
+      id: data.id,
+      init_point: data.init_point,
+      sandbox_init_point: data.sandbox_init_point ?? data.init_point,
+    }
+  } catch (err) {
+    console.error('[MP preference] excepción:', err)
+    return { ok: false, error: 'No se pudo conectar con MercadoPago. Intentá de nuevo en unos minutos.' }
+  }
 }
 
 // ── Validar webhook de MP ─────────────────────────────────────────────────────

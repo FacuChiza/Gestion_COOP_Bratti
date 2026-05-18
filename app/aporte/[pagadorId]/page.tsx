@@ -233,13 +233,13 @@ export default async function AporteExpressPage({
     backUrlBase: backUrl,
   })
 
-  if (!mpData) {
+  if (!mpData.ok) {
     return (
       <Layout>
         <div className="bg-white rounded-2xl border border-red-200 shadow-sm p-6 text-center space-y-3">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto" />
-          <p className="font-semibold text-slate-900">Error al conectar con MercadoPago</p>
-          <p className="text-sm text-slate-500">Intentá de nuevo en unos minutos.</p>
+          <p className="font-semibold text-slate-900">No pudimos conectar con MercadoPago</p>
+          <p className="text-sm text-slate-500">{mpData.error}</p>
         </div>
       </Layout>
     )

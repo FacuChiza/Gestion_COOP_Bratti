@@ -196,11 +196,11 @@ export default async function PagarPage({
     tipo:         tipoMP,
   })
 
-  if (!mpData) {
+  if (!mpData.ok) {
     return (
       <ErrorCard
-        titulo="Error al conectar con MercadoPago"
-        mensaje="No se pudo iniciar el pago. Intentá de nuevo en unos minutos."
+        titulo="No pudimos conectar con MercadoPago"
+        mensaje={mpData.error}
       />
     )
   }
