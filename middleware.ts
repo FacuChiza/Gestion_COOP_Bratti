@@ -1,32 +1,20 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { ADMIN_COOKIE, esAdminTokenValido } from '@/lib/admin-session'
 
-// ─── Protección /admin con HTTP Basic Auth ────────────────────────────────────
+// ─── Protección /admin con cookie firmada (HMAC) ──────────────────────────────
+//
+// Reemplaza el HTTP Basic Auth (popup feo del navegador) por una sesión propia
+// administrada con cookie httpOnly. La cookie se setea en /admin/login después
+// de validar usuario/contraseña, y la firma HMAC se valida en cada request.
 
-function checkAdminAuth(request: NextRequest): NextResponse | null {
-  const authHeader = request.headers.get('authorization')
+async function checkAdminSession(request: NextRequest): Promise<boolean> {
+  const token = request.cookies.get(ADMIN_COOKIE)?.value
+  return esAdminTokenValido(token)
+}
 
-  if (authHeader?.startsWith('Basic ')) {
-    const base64 = authHeader.slice(6)
-    const decoded = Buffer.from(base64, 'base64').toString('utf-8')
-    const [user, ...rest] = decoded.split(':')
-    const password = rest.join(':') // por si la contraseña tiene ':'
-
-    const validUser = process.env.ADMIN_USER ?? 'admin'
-    const validPassword = process.env.ADMIN_PASSWORD ?? ''
-
-    if (user === validUser && password === validPassword) {
-      return null // autenticado, continuar
-    }
-  }
-
-  // No autenticado → pedir credenciales
-  return new NextResponse('Acceso no autorizado', {
-    status: 401,
-    headers: {
-      'WWW-Authenticate': 'Basic realm="Panel Administrativo", charset="UTF-8"',
-    },
-  })
+function isApiPath(pathname: string): boolean {
+  return pathname.startsWith('/api/')
 }
 
 // ─── Middleware principal ─────────────────────────────────────────────────────
@@ -34,13 +22,30 @@ function checkAdminAuth(request: NextRequest): NextResponse | null {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // 1. Proteger /admin y /api/admin
-  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    const adminDenied = checkAdminAuth(request)
-    if (adminDenied) return adminDenied
+  // 1) /admin/login es público (es el form de acceso)
+  //    pero si ya hay sesión, redirigir al panel
+  if (pathname === '/admin/login') {
+    const yaLogueado = await checkAdminSession(request)
+    if (yaLogueado) {
+      return NextResponse.redirect(new URL('/admin', request.url))
+    }
+    return NextResponse.next()
   }
 
-  // 2. Gestionar sesión Supabase para /cuenta
+  // 2) /admin/* y /api/admin/* requieren sesión admin
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+    const ok = await checkAdminSession(request)
+    if (!ok) {
+      if (isApiPath(pathname)) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      }
+      // Página → redirigir al login conservando la ruta original
+      const loginUrl = new URL('/admin/login', request.url)
+      return NextResponse.redirect(loginUrl)
+    }
+  }
+
+  // 3) Sesión Supabase para /cuenta
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -53,15 +58,15 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
+            request.cookies.set(name, value),
           )
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options),
           )
         },
       },
-    }
+    },
   )
 
   const { data: { user } } = await supabase.auth.getUser()

@@ -1,6 +1,9 @@
+import { LogOut } from 'lucide-react'
 import { getAlumnosConEstado, getAlumnosConDeuda, getPlanes, getConfiguracion } from './actions'
+import { logoutAdminAction } from './login/actions'
 import { AdminTabs } from '@/components/admin/AdminTabs'
 import { Logo } from '@/components/Logo'
+import { Button } from '@/components/ui/button'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,14 +47,28 @@ export default async function AdminPage() {
                 <p className="sm:hidden text-xs text-slate-500">Cooperadora Bratti</p>
               </div>
             </div>
-            {/* Fecha solo en desktop */}
-            <div className="hidden md:block text-xs text-slate-500 capitalize shrink-0">
-              {new Date().toLocaleDateString('es-AR', {
-                weekday: 'long',
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric',
-              })}
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Fecha solo en desktop */}
+              <div className="hidden md:block text-xs text-slate-500 capitalize">
+                {new Date().toLocaleDateString('es-AR', {
+                  weekday: 'long',
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </div>
+              <form action={logoutAdminAction}>
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-slate-500 hover:text-slate-900"
+                  title="Cerrar sesión"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Salir</span>
+                </Button>
+              </form>
             </div>
           </div>
         </div>
