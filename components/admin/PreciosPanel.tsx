@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Pencil, Check, X } from 'lucide-react'
+import { Pencil, Check, X, Sun, Moon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -148,8 +148,9 @@ export function PreciosPanel({ planes }: Props) {
         <CardContent className="space-y-6">
           {diurnos.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                🌅 Turno Mañana (diurno)
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <Sun className="h-3.5 w-3.5" strokeWidth={1.75} />
+                Turno Mañana (diurno)
               </p>
               <div className="space-y-2">
                 {diurnos.map(p => <PlanRow key={p.id} plan={p} />)}
@@ -159,8 +160,9 @@ export function PreciosPanel({ planes }: Props) {
 
           {nocturnos.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-                🌙 Turno Noche (nocturno)
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <Moon className="h-3.5 w-3.5" strokeWidth={1.75} />
+                Turno Noche (nocturno)
               </p>
               <div className="space-y-2">
                 {nocturnos.map(p => <PlanRow key={p.id} plan={p} />)}

@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { CheckCircle2, Loader2, Sparkles } from 'lucide-react'
+import { CheckCircle2, Loader2, Sparkles, Sun, Moon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,9 +25,9 @@ const CURSOS_MANANA = [
 const CURSOS_NOCHE = ['1°', '2°', '3°']
 
 const TURNOS = [
-  { valor: 'Mañana', emoji: '🌅' },
-  { valor: 'Noche',  emoji: '🌙' },
-]
+  { valor: 'Mañana', Icono: Sun  },
+  { valor: 'Noche',  Icono: Moon },
+] as const
 
 type TipoPago = 'suscripcion' | 'anual' | 'manual'
 
@@ -285,20 +285,20 @@ export function RegistroForm() {
             <div className="space-y-2">
               <Label>Turno</Label>
               <div className="grid grid-cols-2 gap-2">
-                {TURNOS.map(t => (
+                {TURNOS.map(({ valor, Icono }) => (
                   <button
-                    key={t.valor}
+                    key={valor}
                     type="button"
-                    onClick={() => handleTurnoChange(t.valor)}
+                    onClick={() => handleTurnoChange(valor)}
                     className={cn(
                       'flex items-center justify-center gap-2 rounded-lg border-2 py-3 px-4 text-sm font-medium transition-all',
-                      turno === t.valor
+                      turno === valor
                         ? 'border-slate-900 bg-slate-900 text-white'
                         : 'border-slate-200 hover:border-slate-300 text-slate-700'
                     )}
                   >
-                    <span className="text-xl">{t.emoji}</span>
-                    <span>{t.valor}</span>
+                    <Icono className="h-4 w-4" strokeWidth={1.75} />
+                    <span>{valor}</span>
                   </button>
                 ))}
               </div>

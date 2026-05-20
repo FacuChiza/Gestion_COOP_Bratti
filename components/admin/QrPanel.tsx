@@ -16,10 +16,10 @@ export function QrPanel() {
   // Detectar dominio actual del lado del cliente. SSR no tiene window.
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const urlPagar = baseUrl ? `${baseUrl}/pagar` : '/pagar'
-  // El QR se baja en alta resolución para que se imprima nítido aunque se
-  // muestre más chico en pantalla.
-  const qrDownloadUrl = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(urlPagar)}&margin=20`
-  const qrDisplayUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(urlPagar)}&margin=10`
+  // El QR se baja en JPG alta resolución para que se imprima nítido.
+  // En pantalla se muestra una versión más chica también en JPG (consistente).
+  const qrDownloadUrl = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&format=jpg&data=${encodeURIComponent(urlPagar)}&margin=20`
+  const qrDisplayUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&format=jpg&data=${encodeURIComponent(urlPagar)}&margin=10`
 
   const copiar = async () => {
     try {
@@ -29,15 +29,26 @@ export function QrPanel() {
     } catch {}
   }
 
-  const descargar = () => {
-    const a = document.createElement('a')
-    a.href = qrDownloadUrl
-    a.download = 'qr-cooperadora-bratti.png'
-    a.target = '_blank'
-    a.rel = 'noopener'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+  const descargar = async () => {
+    // Algunos navegadores ignoran el atributo download cuando el href es
+    // de otro origen. Para garantizar la descarga forzada como JPG,
+    // bajamos el blob primero y armamos un object URL local.
+    try {
+      const res = await fetch(qrDownloadUrl)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'qr-cooperadora-bratti.jpg'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      // Fallback: abrir el QR directo en nueva pestaña, el user lo guarda
+      // con click derecho → Guardar imagen.
+      window.open(qrDownloadUrl, '_blank', 'noopener')
+    }
   }
 
   return (
@@ -69,7 +80,7 @@ export function QrPanel() {
           </p>
           <Button onClick={descargar} className="w-full gap-2">
             <Download className="h-4 w-4 shrink-0" />
-            <span className="truncate">Descargar QR</span>
+            <span className="truncate">Descargar QR (JPG)</span>
           </Button>
         </div>
 

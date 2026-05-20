@@ -84,24 +84,20 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
     return { ok: false, error: 'Ya existe una cuenta con ese DNI. Si sos vos, ingresá desde el portal.' }
   }
 
-  // Pre-check de auth.users: aunque truncamos pagadores, puede haber
-  // quedado el user en Supabase Auth (TRUNCATE no toca auth.users).
-  // Si lo encontramos, lo limpiamos antes de crearlo de nuevo para no
-  // bloquear el registro.
+  // Pre-check: borramos cualquier user huérfano en auth.users con este
+  // email. Usamos una función SQL (más confiable que listUsers, que está
+  // paginada). Si la función no existe todavía (migración 06 no corrida),
+  // capturamos el error silenciosamente.
   try {
-    const { data: authList } = await admin.auth.admin.listUsers()
-    const existenteAuth = authList?.users.find((u) => u.email?.toLowerCase() === email)
-    if (existenteAuth) {
-      // Lo borramos para que el INSERT siguiente no choque con duplicado.
-      // Hacerlo silenciosamente porque es un estado huérfano que el padre
-      // no entiende. Si el delete falla, igual seguimos y dejamos que
-      // createUser tire el error específico.
-      await admin.auth.admin.deleteUser(existenteAuth.id)
+    const { data: borrado, error: errRpc } = await admin
+      .rpc('admin_delete_auth_user', { p_email: email })
+    if (errRpc) {
+      console.warn('[registro] admin_delete_auth_user no disponible:', errRpc.message)
+    } else if (borrado === true) {
       console.warn(`[registro] limpiamos auth user huérfano para ${email}`)
     }
   } catch (e) {
-    console.error('[registro] listUsers falló:', e)
-    // no abortamos, dejamos que createUser intente igual
+    console.error('[registro] error limpiando huérfano:', e)
   }
 
   // ── Buscar plan ────────────────────────────────────────────
