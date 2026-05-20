@@ -20,21 +20,27 @@ export async function loginAction(formData: FormData) {
 }
 
 /**
- * Magic link login: en lugar de pedir contraseña, le mandamos un mail con un
- * enlace de un solo uso. Ideal para padres que no quieren recordar passwords.
+ * Login con código OTP de 6 dígitos por email.
  *
- * Requisito: en Supabase Dashboard → Authentication → URL Configuration →
- * "Site URL" debe apuntar a NEXT_PUBLIC_APP_URL, y "Redirect URLs" debe
- * incluir `${NEXT_PUBLIC_APP_URL}/cuenta/auth/callback`.
+ * Por qué código y no magic link:
+ *   Algunos clientes de mail (Gmail entre otros) hacen "preview prefetch"
+ *   de los links al recibir el mensaje, lo que consume el magic link
+ *   antes de que el usuario lo abra. Resultado: cuando el padre clickea,
+ *   el link ya está usado y figura como expirado. Con código de 6 dígitos
+ *   no hay link que se pueda consumir por accidente.
+ *
+ *   Bonus: es el patrón que usan WhatsApp Web, Slack, los bancos, etc.,
+ *   así que es familiar para cualquier padre.
+ *
+ * Seguridad: solo dejamos enviar el código a emails que ya están como
+ * pagadores en public.pagadores. El user en auth.users se crea
+ * automáticamente al verificar el OTP (shouldCreateUser: true).
  */
-export async function magicLinkAction(formData: FormData) {
+export async function pedirCodigoAction(formData: FormData) {
   const supabase = await createClient()
   const email = (formData.get('email') as string ?? '').trim().toLowerCase()
   if (!email) return { error: 'Ingresá tu email' }
 
-  // Solo dejamos entrar a emails que ya están dados de alta como pagador.
-  // Si no, cualquier persona podría pedir un magic link sin tener nada
-  // asignado en la base.
   const admin = createAdminClient()
   const { data: pagador } = await admin
     .from('pagadores')
@@ -43,26 +49,47 @@ export async function magicLinkAction(formData: FormData) {
     .maybeSingle()
 
   if (!pagador) {
-    return { error: 'No encontramos una cuenta con ese email. Si te diste de alta hace poco, contactá a la cooperadora.' }
+    return { error: 'No encontramos una cuenta con ese email. Si te registraste hace poco, esperá unos minutos y probá de nuevo.' }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  // shouldCreateUser:true — el user en auth.users se crea automáticamente
-  // en el primer magic link. El registro solo crea el pagador en public,
-  // no toca auth.users (evita un bug recurrente de admin.createUser).
-  // La seguridad sigue garantizada: arriba ya validamos que el email
-  // exista como pagador antes de mandar el link.
+  // Sin emailRedirectTo → Supabase manda CÓDIGO de 6 dígitos (no magic link)
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: {
-      emailRedirectTo: `${appUrl}/cuenta/auth/callback`,
-      shouldCreateUser: true,
-    },
+    options: { shouldCreateUser: true },
   })
 
   if (error) {
-    console.error('[magicLink]', error)
-    return { error: 'No se pudo enviar el enlace. Probá de nuevo en unos minutos.' }
+    console.error('[pedirCodigo]', error)
+    if (error.message?.toLowerCase().includes('rate')) {
+      return { error: 'Hubo muchos intentos seguidos. Esperá un minuto.' }
+    }
+    return { error: 'No se pudo enviar el código. Probá de nuevo en unos minutos.' }
+  }
+
+  return { ok: true, email }
+}
+
+export async function verificarCodigoAction(formData: FormData) {
+  const supabase = await createClient()
+  const email = (formData.get('email') as string ?? '').trim().toLowerCase()
+  const token = (formData.get('token') as string ?? '').replace(/\D/g, '').trim()
+
+  if (!email || !token) return { error: 'Faltan datos.' }
+  if (token.length !== 6) return { error: 'El código debe tener 6 dígitos.' }
+
+  const { error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'email',
+  })
+
+  if (error) {
+    console.error('[verificarCodigo]', error)
+    const msg = error.message?.toLowerCase() ?? ''
+    if (msg.includes('expired') || msg.includes('invalid')) {
+      return { error: 'El código es incorrecto o expiró. Pedí uno nuevo.' }
+    }
+    return { error: 'No pudimos validar el código. Probá de nuevo.' }
   }
 
   return { ok: true }

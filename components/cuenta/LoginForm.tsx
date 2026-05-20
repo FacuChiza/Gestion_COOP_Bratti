@@ -1,64 +1,87 @@
 'use client'
 
-import { useState, useTransition, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useTransition, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { Mail, KeyRound, CheckCircle2, ArrowLeft, Sparkles, AlertCircle } from 'lucide-react'
+import { Mail, ArrowLeft, Sparkles, AlertCircle, KeyRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { loginAction, magicLinkAction } from '@/app/cuenta/actions'
+import { pedirCodigoAction, verificarCodigoAction } from '@/app/cuenta/actions'
 import { Logo } from '@/components/Logo'
 
-type Modo = 'magic' | 'password'
-
-/**
- * Login del portal del padre.
- *
- * Estado actual: solo Magic Link visible. El modo Contraseña sigue
- * implementado pero el toggle está oculto. Para reactivarlo, cambiar
- * la constante MOSTRAR_TOGGLE a true.
- */
-const MOSTRAR_TOGGLE = false
+type Paso = 'pedir' | 'verificar'
 
 export function LoginForm() {
+  const router = useRouter()
   const searchParams = useSearchParams()
-  const [modo, setModo] = useState<Modo>('magic')
-  const [magicEnviado, setMagicEnviado] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
 
-  // Si vinimos del callback con un error, lo mostramos
+  const [paso, setPaso]     = useState<Paso>('pedir')
+  const [email, setEmail]   = useState('')
+  const [codigo, setCodigo] = useState('')
+  const [isPending, startTransition] = useTransition()
+  const inputCodigoRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     const auth = searchParams.get('auth')
-    if (auth === 'expirado') {
-      toast.error('El enlace expiró o ya se usó. Pedí uno nuevo.')
-    } else if (auth === 'invalido') {
-      toast.error('El enlace de acceso no es válido.')
-    }
+    if (auth === 'expirado') toast.error('El código expiró o ya se usó.')
+    if (auth === 'invalido') toast.error('El código no es válido.')
   }, [searchParams])
 
-  const handleMagic = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    const email = formData.get('email') as string
+  // Autofocus al input del código cuando pasamos al paso 2
+  useEffect(() => {
+    if (paso === 'verificar') {
+      setTimeout(() => inputCodigoRef.current?.focus(), 100)
+    }
+  }, [paso])
 
+  const handlePedir = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
     startTransition(async () => {
-      const r = await magicLinkAction(formData)
+      const r = await pedirCodigoAction(fd)
       if (r?.error) {
         toast.error(r.error)
         return
       }
-      setMagicEnviado(email)
+      if (r?.ok) {
+        setEmail(r.email ?? (fd.get('email') as string))
+        setPaso('verificar')
+        setCodigo('')
+      }
     })
   }
 
-  const handlePassword = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleVerificar = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
+    const fd = new FormData()
+    fd.set('email', email)
+    fd.set('token', codigo)
     startTransition(async () => {
-      const r = await loginAction(formData)
+      const r = await verificarCodigoAction(fd)
+      if (r?.error) {
+        toast.error(r.error)
+        return
+      }
+      // Sesión creada, redirigir al dashboard
+      router.push('/cuenta/dashboard')
+      router.refresh()
+    })
+  }
+
+  const handleVolver = () => {
+    setPaso('pedir')
+    setCodigo('')
+  }
+
+  const handleReenviar = () => {
+    const fd = new FormData()
+    fd.set('email', email)
+    startTransition(async () => {
+      const r = await pedirCodigoAction(fd)
       if (r?.error) toast.error(r.error)
+      else toast.success('Te enviamos un código nuevo.')
     })
   }
 
@@ -71,158 +94,110 @@ export function LoginForm() {
 
         <Card className="overflow-hidden">
           <CardContent className="p-5 sm:p-6">
-            {/* ── Pantalla "te llegó el mail" ──────────────────────── */}
-            {magicEnviado ? (
-              <div className="text-center space-y-4 py-2">
-                <div className="flex justify-center">
-                  <div className="h-14 w-14 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <CheckCircle2 className="h-7 w-7 text-emerald-600" />
-                  </div>
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">Revisá tu mail</h2>
-                  <p className="text-sm text-slate-600 mt-1">
-                    Te enviamos un enlace a:
-                  </p>
-                  <p className="text-sm font-semibold text-slate-900 mt-1 break-all">
-                    {magicEnviado}
-                  </p>
-                </div>
-
-                <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-800 text-left">
-                  <p className="font-semibold flex items-center gap-1.5 mb-1">
-                    <AlertCircle className="h-3.5 w-3.5" />
-                    ¿No te llega?
-                  </p>
-                  <ul className="space-y-0.5 list-disc list-inside text-amber-700">
-                    <li>Revisá la carpeta de Spam o Promociones</li>
-                    <li>Puede demorar hasta 1 minuto</li>
-                  </ul>
-                </div>
-
-                <button
-                  onClick={() => setMagicEnviado(null)}
-                  className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 transition-colors"
-                >
-                  <ArrowLeft className="h-3 w-3" />
-                  Usar otro email
-                </button>
-              </div>
-            ) : (
+            {/* ── PASO 1: pedir código ───────────────────────────── */}
+            {paso === 'pedir' && (
               <>
-                {/* ── Header del card ────────────────────────────── */}
                 <div className="mb-5">
                   <h1 className="text-xl font-bold text-slate-900">Ingresar al portal</h1>
                   <p className="text-sm text-slate-500 mt-1">
-                    {modo === 'magic'
-                      ? 'Te mandamos un enlace al mail. Sin contraseñas.'
-                      : 'Usá tu email y contraseña para entrar.'}
+                    Te enviamos un código de 6 dígitos al mail. Sin contraseñas.
                   </p>
                 </div>
 
-                {/* ── Toggle Magic / Contraseña ──────────────────── */}
-                {/* Oculto por ahora — flag MOSTRAR_TOGGLE arriba */}
-                {MOSTRAR_TOGGLE && (
-                  <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg mb-5">
-                    <button
-                      type="button"
-                      onClick={() => setModo('magic')}
-                      className={`flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-md transition-all ${
-                        modo === 'magic'
-                          ? 'bg-white text-slate-900 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Enlace por mail
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setModo('password')}
-                      className={`flex items-center justify-center gap-1.5 py-2 text-sm font-medium rounded-md transition-all ${
-                        modo === 'password'
-                          ? 'bg-white text-slate-900 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                    >
-                      <KeyRound className="h-3.5 w-3.5" />
-                      Contraseña
-                    </button>
+                <form onSubmit={handlePedir} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email">Email registrado</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        autoComplete="email"
+                        placeholder="tu@email.com"
+                        className="pl-9"
+                      />
+                    </div>
                   </div>
-                )}
+                  <Button type="submit" className="w-full gap-2" disabled={isPending}>
+                    {isPending ? 'Enviando...' : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Enviarme el código
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </>
+            )}
 
-                {/* ── Form Magic Link ───────────────────────────── */}
-                {modo === 'magic' && (
-                  <form onSubmit={handleMagic} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="email-magic">Email registrado</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                        <Input
-                          id="email-magic"
-                          name="email"
-                          type="email"
-                          required
-                          autoComplete="email"
-                          placeholder="tu@email.com"
-                          className="pl-9"
-                        />
-                      </div>
-                      <p className="text-xs text-slate-400">
-                        Tiene que ser el email con el que te diste de alta.
-                      </p>
-                    </div>
-                    <Button type="submit" className="w-full gap-2" disabled={isPending}>
-                      {isPending ? (
-                        'Enviando...'
-                      ) : (
-                        <>
-                          <Sparkles className="h-4 w-4" />
-                          Enviarme el enlace
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                )}
+            {/* ── PASO 2: ingresar código ────────────────────────── */}
+            {paso === 'verificar' && (
+              <>
+                <div className="mb-5">
+                  <button
+                    type="button"
+                    onClick={handleVolver}
+                    className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 mb-2"
+                  >
+                    <ArrowLeft className="h-3 w-3" />
+                    Usar otro email
+                  </button>
+                  <h1 className="text-xl font-bold text-slate-900">Ingresá el código</h1>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Te enviamos un código de 6 dígitos a:
+                  </p>
+                  <p className="text-sm font-semibold text-slate-900 break-all">{email}</p>
+                </div>
 
-                {/* ── Form Contraseña (oculto por ahora) ─────────── */}
-                {modo === 'password' && (
-                  <form onSubmit={handlePassword} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="email-pwd">Email</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                        <Input
-                          id="email-pwd"
-                          name="email"
-                          type="email"
-                          required
-                          autoComplete="email"
-                          placeholder="tu@email.com"
-                          className="pl-9"
-                        />
-                      </div>
+                <form onSubmit={handleVerificar} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="codigo">Código</Label>
+                    <div className="relative">
+                      <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                      <Input
+                        ref={inputCodigoRef}
+                        id="codigo"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        required
+                        maxLength={6}
+                        placeholder="123456"
+                        value={codigo}
+                        onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        className="pl-9 text-center text-lg tracking-[0.4em] font-mono"
+                      />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="password">Contraseña</Label>
-                      <div className="relative">
-                        <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                        <Input
-                          id="password"
-                          name="password"
-                          type="password"
-                          required
-                          autoComplete="current-password"
-                          placeholder="••••••••"
-                          className="pl-9"
-                        />
-                      </div>
+                    <p className="text-xs text-slate-400">
+                      Revisá tu casilla. Puede tardar hasta 1 minuto (mirá también Spam).
+                    </p>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isPending || codigo.length !== 6}
+                  >
+                    {isPending ? 'Verificando...' : 'Ingresar'}
+                  </Button>
+
+                  <div className="rounded-md bg-slate-50 border border-slate-200 px-3 py-2 flex items-start gap-2">
+                    <AlertCircle className="h-3.5 w-3.5 text-slate-500 shrink-0 mt-0.5" />
+                    <div className="text-xs text-slate-600">
+                      <p>¿No te llegó el código?</p>
+                      <button
+                        type="button"
+                        onClick={handleReenviar}
+                        disabled={isPending}
+                        className="text-slate-900 underline hover:text-slate-700 mt-0.5"
+                      >
+                        Reenviar código
+                      </button>
                     </div>
-                    <Button type="submit" className="w-full" disabled={isPending}>
-                      {isPending ? 'Ingresando...' : 'Ingresar'}
-                    </Button>
-                  </form>
-                )}
+                  </div>
+                </form>
               </>
             )}
           </CardContent>
