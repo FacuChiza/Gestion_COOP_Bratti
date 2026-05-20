@@ -13,8 +13,14 @@ import { Button } from '@/components/ui/button'
 export function QrPanel() {
   const [copiado, setCopiado] = useState(false)
 
-  // Detectar dominio actual del lado del cliente. SSR no tiene window.
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
+  // SIEMPRE usar la URL canónica configurada en NEXT_PUBLIC_APP_URL.
+  // Si usáramos window.location.origin, el QR codificaría la URL del
+  // deploy actual (que puede ser un preview con Vercel Auth activado),
+  // y los padres que escaneen caerían en el login de Vercel.
+  // Fallback a window.location.origin solo si la env var no está definida.
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : '')
   const urlPagar = baseUrl ? `${baseUrl}/pagar` : '/pagar'
   // El QR se baja en JPG alta resolución para que se imprima nítido.
   // En pantalla se muestra una versión más chica también en JPG (consistente).
@@ -115,10 +121,15 @@ export function QrPanel() {
           </a>
         </div>
 
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 sm:p-4">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 sm:p-4 space-y-2">
           <p className="text-xs text-amber-800">
             <strong>Tip:</strong> el padre solo necesita su DNI para identificarse.
             Si no está dado de alta, le aparece un mensaje invitándolo a registrarse.
+          </p>
+          <p className="text-xs text-amber-800 border-t border-amber-200 pt-2">
+            <strong>El QR no caduca:</strong> imprimilo una vez y queda válido para siempre,
+            mientras la cooperadora mantenga este sitio activo. Solo necesita regenerarse
+            si en el futuro cambian el dominio.
           </p>
         </div>
       </div>
