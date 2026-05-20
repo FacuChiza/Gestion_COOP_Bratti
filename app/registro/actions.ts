@@ -39,7 +39,12 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
   const dniRaw    = (formData.get('dni')      as string ?? '').trim()
   const dni       = dniRaw.replace(/\D/g, '')
   const email     = (formData.get('email')    as string).trim().toLowerCase()
-  const telefono  = (formData.get('telefono') as string).trim()
+
+  // El input PhoneInput entrega solo dígitos (10 nros: área + número).
+  // Lo normalizamos al formato internacional E.164 con prefijo de móvil
+  // argentino: +549 + 10 dígitos. Es lo que Twilio WhatsApp espera.
+  const telefonoDigitos = (formData.get('telefono') as string ?? '').replace(/\D/g, '')
+  const telefono = telefonoDigitos.length === 10 ? `+549${telefonoDigitos}` : ''
 
   // Password random — el padre nunca lo usa, el login es magic link.
   const password = `${crypto.randomUUID()}-${crypto.randomUUID()}`
@@ -50,8 +55,11 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
   const turno        = formData.get('turno')           as string
   const tipoPago     = formData.get('tipo_pago')       as string
 
-  if (!nombre || !dni || !email || !telefono || !nombreAlumno || !grado || !turno || !tipoPago) {
+  if (!nombre || !dni || !email || !nombreAlumno || !grado || !turno || !tipoPago) {
     return { ok: false, error: 'Completá todos los campos.' }
+  }
+  if (!telefono) {
+    return { ok: false, error: 'El número de WhatsApp debe tener 10 dígitos (área + número).' }
   }
   if (dni.length < 6 || dni.length > 10) {
     return { ok: false, error: 'El DNI debe tener entre 6 y 10 dígitos.' }
@@ -76,6 +84,26 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
     return { ok: false, error: 'Ya existe una cuenta con ese DNI. Si sos vos, ingresá desde el portal.' }
   }
 
+  // Pre-check de auth.users: aunque truncamos pagadores, puede haber
+  // quedado el user en Supabase Auth (TRUNCATE no toca auth.users).
+  // Si lo encontramos, lo limpiamos antes de crearlo de nuevo para no
+  // bloquear el registro.
+  try {
+    const { data: authList } = await admin.auth.admin.listUsers()
+    const existenteAuth = authList?.users.find((u) => u.email?.toLowerCase() === email)
+    if (existenteAuth) {
+      // Lo borramos para que el INSERT siguiente no choque con duplicado.
+      // Hacerlo silenciosamente porque es un estado huérfano que el padre
+      // no entiende. Si el delete falla, igual seguimos y dejamos que
+      // createUser tire el error específico.
+      await admin.auth.admin.deleteUser(existenteAuth.id)
+      console.warn(`[registro] limpiamos auth user huérfano para ${email}`)
+    }
+  } catch (e) {
+    console.error('[registro] listUsers falló:', e)
+    // no abortamos, dejamos que createUser intente igual
+  }
+
   // ── Buscar plan ────────────────────────────────────────────
   const turnoNormalized = turno.toLowerCase() === 'noche' ? 'nocturno' : 'diurno'
   const tipoPlan = tipoPago === 'anual' ? 'anual' : 'mensual'
@@ -98,12 +126,37 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
     email_confirm: true,
   })
 
-  if (authError) {
-    const msg = authError.message.toLowerCase()
-    if (msg.includes('already') || msg.includes('exist') || msg.includes('registered')) {
-      return { ok: false, error: 'Ya existe una cuenta con ese email. Podés ingresar desde el portal.' }
+  if (authError || !authData?.user) {
+    // Logueamos TODO el error para diagnosticar desde Vercel logs
+    console.error('[registro] auth.admin.createUser falló:', {
+      email,
+      message: authError?.message,
+      status: (authError as { status?: number })?.status,
+      full: authError,
+    })
+
+    const rawMsg = (authError?.message ?? '').toLowerCase()
+
+    if (rawMsg.includes('already') || rawMsg.includes('exist') || rawMsg.includes('registered')) {
+      return { ok: false, error: 'Ya existe una cuenta con ese email. Ingresá desde el portal.' }
     }
-    return { ok: false, error: `Error al crear tu cuenta: ${authError.message}` }
+    if (rawMsg.includes('invalid') && rawMsg.includes('email')) {
+      return { ok: false, error: 'El formato del email no es válido.' }
+    }
+    if (rawMsg.includes('rate') || rawMsg.includes('429')) {
+      return { ok: false, error: 'Hubo muchos intentos seguidos. Esperá un minuto y probá de nuevo.' }
+    }
+    if (rawMsg.includes('internal server error') || rawMsg.includes('database error')) {
+      return {
+        ok: false,
+        error: 'Supabase Auth está devolviendo error 500. Probá con otro email, o avisá al admin que revise el dashboard de Supabase → Authentication → Users (puede haber un usuario huérfano con ese email).',
+      }
+    }
+
+    return {
+      ok: false,
+      error: `No pudimos crear tu cuenta: ${authError?.message ?? 'error desconocido'}. Probá de nuevo o contactá a la cooperadora.`,
+    }
   }
 
   const authUserId = authData.user.id

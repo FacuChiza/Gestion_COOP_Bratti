@@ -23,7 +23,12 @@ async function enviarWhatsApp(para: string, mensaje: string): Promise<boolean> {
   }
 
   const from = process.env.TWILIO_WHATSAPP_FROM!
-  const to   = `whatsapp:${para.startsWith('+') ? para : `+54${para.replace(/\D/g, '')}`}`
+  // El número en DB se guarda como E.164 (+549XXXXXXXXXX) desde el alta.
+  // Si por algún caso legacy viene sin código, asumimos celular argentino
+  // y prefijamos +549 (celulares en AR requieren el 9 después del 54).
+  const limpio = para.replace(/\D/g, '')
+  const conPrefijo = para.startsWith('+') ? para : `+549${limpio}`
+  const to = `whatsapp:${conPrefijo}`
 
   const url = `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`
 

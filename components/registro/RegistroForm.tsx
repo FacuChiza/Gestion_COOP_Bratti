@@ -7,6 +7,7 @@ import { CheckCircle2, Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { registrarPagadorPublico } from '@/app/registro/actions'
 import { cn, formatMonto } from '@/lib/utils'
 
@@ -107,11 +108,15 @@ export function RegistroForm() {
     },
   ]
 
+  // El teléfono que entrega PhoneInput ya viene como dígitos puros, sin
+  // código de país. Validamos que tenga 10 dígitos (área + número).
+  const telefonoValido = telefono.replace(/\D/g, '').length === 10
+
   const paso1Valido =
     nombre.trim() &&
     dniValido &&
     email.trim() &&
-    telefono.trim() &&
+    telefonoValido &&
     nombreAlumno.trim() &&
     grado &&
     turno
@@ -244,12 +249,10 @@ export function RegistroForm() {
               </div>
               <div className="space-y-1">
                 <Label htmlFor="telefono">WhatsApp</Label>
-                <Input
+                <PhoneInput
                   id="telefono"
-                  type="tel"
-                  placeholder="11 1234-5678"
                   value={telefono}
-                  onChange={e => setTelefono(e.target.value)}
+                  onChange={setTelefono}
                 />
               </div>
             </div>
