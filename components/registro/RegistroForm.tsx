@@ -158,11 +158,19 @@ export function RegistroForm() {
         </div>
         <h2 className="text-xl font-bold text-slate-900">¡Registro completado!</h2>
         <p className="text-slate-600">
-          Tu cuenta fue creada para <strong>{nombreAlumno}</strong>.
+          Te dimos de alta para <strong>{nombreAlumno}</strong>.
         </p>
-        <p className="text-sm text-slate-500">
-          Para entrar al portal, pedís un enlace por mail. Sin contraseñas.
-        </p>
+        <div className="rounded-lg bg-slate-50 border border-slate-200 px-4 py-3 text-left space-y-2 text-sm">
+          <p className="font-semibold text-slate-900 flex items-center gap-1.5">
+            <Sparkles className="h-4 w-4" />
+            Para entrar al portal cuando quieras:
+          </p>
+          <ol className="text-xs text-slate-600 list-decimal list-inside space-y-1">
+            <li>Andá a <strong>/cuenta</strong></li>
+            <li>Poné tu email</li>
+            <li>Te llega un enlace al mail — click y entrás (sin contraseñas)</li>
+          </ol>
+        </div>
         <a
           href="/cuenta"
           className="inline-flex items-center justify-center gap-2 h-10 px-6 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 transition-colors"

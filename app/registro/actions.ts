@@ -12,10 +12,16 @@ export type RegistroResult =
 /**
  * Registra un pagador + alumno + suscripción desde la web pública.
  *
- * Estrategia de rollback:
- *  Si algo falla a mitad del proceso, deshacemos las inserciones previas
- *  para que el padre pueda volver a intentar sin chocar contra "ya existe
- *  ese email/DNI". El orden de rollback es inverso al de creación.
+ * Decisión de diseño importante:
+ *   NO creamos el user en `auth.users` acá. Solo creamos el pagador en
+ *   `public.pagadores`. El user en auth.users se crea automáticamente
+ *   en el primer magic link que pida desde /cuenta.
+ *
+ *   Esto evita un bug recurrente de admin.auth.admin.createUser que
+ *   devuelve 500 ("unexpected_failure") en algunos proyectos de
+ *   Supabase, y simplifica el flujo: el padre nunca necesita una
+ *   contraseña, así que no tiene sentido crearle un user con password
+ *   random.
  */
 export async function registrarPagadorPublico(
   formData: FormData,
@@ -23,7 +29,6 @@ export async function registrarPagadorPublico(
   try {
     return await registrarPagadorPublicoImpl(formData)
   } catch (err) {
-    // Captura cualquier excepción no manejada para no devolver 500 al cliente.
     console.error('[registrarPagadorPublico] excepción no manejada:', err)
     const msg = err instanceof Error ? err.message : 'Error desconocido'
     return { ok: false, error: `Hubo un problema al registrarte: ${msg}. Si persiste, contactá a la cooperadora.` }
@@ -32,7 +37,7 @@ export async function registrarPagadorPublico(
 
 async function registrarPagadorPublicoImpl(formData: FormData): Promise<RegistroResult> {
   const supabase = await createClient()
-  const admin   = createAdminClient()
+  const admin    = createAdminClient()
 
   // ── Datos del pagador ──────────────────────────────────────
   const nombre    = (formData.get('nombre')   as string).trim()
@@ -41,13 +46,9 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
   const email     = (formData.get('email')    as string).trim().toLowerCase()
 
   // El input PhoneInput entrega solo dígitos (10 nros: área + número).
-  // Lo normalizamos al formato internacional E.164 con prefijo de móvil
-  // argentino: +549 + 10 dígitos. Es lo que Twilio WhatsApp espera.
+  // Lo normalizamos a E.164 con prefijo de móvil argentino: +549 + 10 dígitos.
   const telefonoDigitos = (formData.get('telefono') as string ?? '').replace(/\D/g, '')
   const telefono = telefonoDigitos.length === 10 ? `+549${telefonoDigitos}` : ''
-
-  // Password random — el padre nunca lo usa, el login es magic link.
-  const password = `${crypto.randomUUID()}-${crypto.randomUUID()}`
 
   // ── Datos del alumno ───────────────────────────────────────
   const nombreAlumno = (formData.get('nombre_alumno') as string).trim()
@@ -67,7 +68,7 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
   if ((tipoPago === 'suscripcion' || tipoPago === 'anual') && !mpConfigurado()) {
     return {
       ok: false,
-      error: 'El pago por MercadoPago no está habilitado en este momento. Elegí "Aporte mensual" (en efectivo) y pasá por la cooperadora.',
+      error: 'El pago por MercadoPago no está habilitado. Elegí "Aporte mensual" (efectivo) y pasá por la cooperadora.',
     }
   }
 
@@ -75,29 +76,13 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
   const { data: existenteMail } = await supabase
     .from('pagadores').select('id').eq('mail', email).maybeSingle()
   if (existenteMail) {
-    return { ok: false, error: 'Ya existe una cuenta con ese email. Podés ingresar desde el portal.' }
+    return { ok: false, error: 'Ya existe una cuenta con ese email. Ingresá al portal desde /cuenta.' }
   }
 
   const { data: existenteDni } = await admin
     .from('pagadores').select('id').eq('dni', dni).maybeSingle()
   if (existenteDni) {
-    return { ok: false, error: 'Ya existe una cuenta con ese DNI. Si sos vos, ingresá desde el portal.' }
-  }
-
-  // Pre-check: borramos cualquier user huérfano en auth.users con este
-  // email. Usamos una función SQL (más confiable que listUsers, que está
-  // paginada). Si la función no existe todavía (migración 06 no corrida),
-  // capturamos el error silenciosamente.
-  try {
-    const { data: borrado, error: errRpc } = await admin
-      .rpc('admin_delete_auth_user', { p_email: email })
-    if (errRpc) {
-      console.warn('[registro] admin_delete_auth_user no disponible:', errRpc.message)
-    } else if (borrado === true) {
-      console.warn(`[registro] limpiamos auth user huérfano para ${email}`)
-    }
-  } catch (e) {
-    console.error('[registro] error limpiando huérfano:', e)
+    return { ok: false, error: 'Ya existe una cuenta con ese DNI.' }
   }
 
   // ── Buscar plan ────────────────────────────────────────────
@@ -115,63 +100,12 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
     return { ok: false, error: 'No se encontró un plan para tu turno. Contactá a la cooperadora.' }
   }
 
-  // ── Crear usuario en Supabase Auth ─────────────────────────
-  const { data: authData, error: authError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  })
-
-  if (authError || !authData?.user) {
-    // Logueamos TODO el error para diagnosticar desde Vercel logs
-    console.error('[registro] auth.admin.createUser falló:', {
-      email,
-      message: authError?.message,
-      status: (authError as { status?: number })?.status,
-      full: authError,
-    })
-
-    const rawMsg = (authError?.message ?? '').toLowerCase()
-
-    if (rawMsg.includes('already') || rawMsg.includes('exist') || rawMsg.includes('registered')) {
-      return { ok: false, error: 'Ya existe una cuenta con ese email. Ingresá desde el portal.' }
-    }
-    if (rawMsg.includes('invalid') && rawMsg.includes('email')) {
-      return { ok: false, error: 'El formato del email no es válido.' }
-    }
-    if (rawMsg.includes('rate') || rawMsg.includes('429')) {
-      return { ok: false, error: 'Hubo muchos intentos seguidos. Esperá un minuto y probá de nuevo.' }
-    }
-    if (rawMsg.includes('internal server error') || rawMsg.includes('database error')) {
-      return {
-        ok: false,
-        error: 'Supabase Auth está devolviendo error 500. Probá con otro email, o avisá al admin que revise el dashboard de Supabase → Authentication → Users (puede haber un usuario huérfano con ese email).',
-      }
-    }
-
-    return {
-      ok: false,
-      error: `No pudimos crear tu cuenta: ${authError?.message ?? 'error desconocido'}. Probá de nuevo o contactá a la cooperadora.`,
-    }
-  }
-
-  const authUserId = authData.user.id
-
-  // Helper: deshace todo lo creado hasta acá, en orden inverso.
-  const rollback = async (creado: { authUserId?: string; pagadorId?: string; alumnoId?: string; suscripcionId?: string }) => {
+  // Helper de rollback (sin tocar auth.users, no lo creamos acá)
+  const rollback = async (creado: { pagadorId?: string; alumnoId?: string; suscripcionId?: string }) => {
     try {
-      if (creado.suscripcionId) {
-        await admin.from('suscripciones').delete().eq('id', creado.suscripcionId)
-      }
-      if (creado.alumnoId) {
-        await admin.from('alumnos').delete().eq('id', creado.alumnoId)
-      }
-      if (creado.pagadorId) {
-        await admin.from('pagadores').delete().eq('id', creado.pagadorId)
-      }
-      if (creado.authUserId) {
-        await admin.auth.admin.deleteUser(creado.authUserId)
-      }
+      if (creado.suscripcionId) await admin.from('suscripciones').delete().eq('id', creado.suscripcionId)
+      if (creado.alumnoId)      await admin.from('alumnos').delete().eq('id', creado.alumnoId)
+      if (creado.pagadorId)     await admin.from('pagadores').delete().eq('id', creado.pagadorId)
     } catch (e) {
       console.error('[registro] error durante rollback:', e)
     }
@@ -186,7 +120,6 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
 
   if (errPagador || !pagador) {
     console.error('[registro] error creando pagador:', errPagador)
-    await rollback({ authUserId })
     return { ok: false, error: 'Error al guardar tus datos. Intentá de nuevo.' }
   }
 
@@ -199,7 +132,7 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
 
   if (errAlumno || !alumno) {
     console.error('[registro] error creando alumno:', errAlumno)
-    await rollback({ authUserId, pagadorId: pagador.id })
+    await rollback({ pagadorId: pagador.id })
     return { ok: false, error: 'Error al registrar al alumno.' }
   }
 
@@ -221,7 +154,7 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
 
   if (errSusc || !suscripcion) {
     console.error('[registro] error creando suscripción:', errSusc)
-    await rollback({ authUserId, pagadorId: pagador.id, alumnoId: alumno.id })
+    await rollback({ pagadorId: pagador.id, alumnoId: alumno.id })
     return { ok: false, error: 'Error al crear la suscripción.' }
   }
 
@@ -236,9 +169,7 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
     })
 
     if (!mp.ok) {
-      // Rollback total: borramos todo lo que creamos para que pueda
-      // reintentar sin chocar con duplicados.
-      await rollback({ authUserId, pagadorId: pagador.id, alumnoId: alumno.id, suscripcionId: suscripcion.id })
+      await rollback({ pagadorId: pagador.id, alumnoId: alumno.id, suscripcionId: suscripcion.id })
       return { ok: false, error: mp.error }
     }
 
@@ -260,7 +191,7 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
     })
 
     if (!mp.ok) {
-      await rollback({ authUserId, pagadorId: pagador.id, alumnoId: alumno.id, suscripcionId: suscripcion.id })
+      await rollback({ pagadorId: pagador.id, alumnoId: alumno.id, suscripcionId: suscripcion.id })
       return { ok: false, error: mp.error }
     }
 
@@ -268,12 +199,12 @@ async function registrarPagadorPublicoImpl(formData: FormData): Promise<Registro
   }
 
   // ── tipoPago === 'manual' ──────────────────────────────────
-  // Bienvenida solo por email para no saturar.
-  await emailBienvenida({
-    mail:          email,
-    nombrePagador: nombre,
-    nombreAlumno:  nombreAlumno,
-  })
+  // Mandar bienvenida por mail (best-effort, no bloquea).
+  try {
+    await emailBienvenida({ mail: email, nombrePagador: nombre, nombreAlumno })
+  } catch (e) {
+    console.error('[registro] emailBienvenida falló (no crítico):', e)
+  }
 
   return { ok: true, pagadorId: pagador.id, tipoPago }
 }

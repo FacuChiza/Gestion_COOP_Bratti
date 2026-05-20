@@ -47,11 +47,16 @@ export async function magicLinkAction(formData: FormData) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  // shouldCreateUser:true — el user en auth.users se crea automáticamente
+  // en el primer magic link. El registro solo crea el pagador en public,
+  // no toca auth.users (evita un bug recurrente de admin.createUser).
+  // La seguridad sigue garantizada: arriba ya validamos que el email
+  // exista como pagador antes de mandar el link.
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
       emailRedirectTo: `${appUrl}/cuenta/auth/callback`,
-      shouldCreateUser: false, // no creamos cuentas nuevas, solo deja entrar a las existentes
+      shouldCreateUser: true,
     },
   })
 
