@@ -15,9 +15,24 @@
 
 const BASE_URL = 'https://api.mercadopago.com'
 
-function headers() {
+/**
+ * MP no permite tener Checkout Pro + Suscripciones en la misma app, así que
+ * usamos 2 access tokens:
+ *   • MP_ACCESS_TOKEN              → app de Checkout Pro (pagos únicos:
+ *                                    aporte mensual manual y aporte anual)
+ *   • MP_SUBSCRIPTION_ACCESS_TOKEN → app de Suscripciones (débito automático)
+ *
+ * Si MP_SUBSCRIPTION_ACCESS_TOKEN no está definido, caemos al
+ * MP_ACCESS_TOKEN (útil cuando solo hay una app configurada).
+ */
+function headers(modo: 'checkout' | 'suscripcion' = 'checkout') {
+  const token =
+    modo === 'suscripcion'
+      ? process.env.MP_SUBSCRIPTION_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN
+      : process.env.MP_ACCESS_TOKEN
+
   return {
-    Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`,
+    Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
     'X-Idempotency-Key': crypto.randomUUID(),
   }
@@ -25,6 +40,10 @@ function headers() {
 
 export function mpConfigurado(): boolean {
   return !!process.env.MP_ACCESS_TOKEN && !!process.env.MP_PUBLIC_KEY
+}
+
+export function mpSuscripcionesHabilitado(): boolean {
+  return !!process.env.MP_SUBSCRIPTION_ACCESS_TOKEN
 }
 
 // ── Tipos de retorno ──────────────────────────────────────────────────────────
@@ -50,6 +69,12 @@ export async function crearSuscripcionMP(params: {
 }): Promise<MpPreapprovalResult> {
   if (!mpConfigurado()) {
     return { ok: false, error: 'MercadoPago no está configurado en el servidor.' }
+  }
+  if (!mpSuscripcionesHabilitado()) {
+    return {
+      ok: false,
+      error: 'El débito automático todavía no está habilitado. Elegí "Aporte mensual" o "Aporte anual" mientras tanto.',
+    }
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
@@ -83,7 +108,7 @@ export async function crearSuscripcionMP(params: {
   try {
     const res = await fetch(`${BASE_URL}/preapproval`, {
       method: 'POST',
-      headers: headers(),
+      headers: headers('suscripcion'),
       body: JSON.stringify(body),
     })
 
@@ -155,7 +180,7 @@ export async function crearPreferenciaMP(params: {
   try {
     const res = await fetch(`${BASE_URL}/checkout/preferences`, {
       method: 'POST',
-      headers: headers(),
+      headers: headers('checkout'),
       body: JSON.stringify(body),
     })
 
