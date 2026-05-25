@@ -62,6 +62,11 @@ export async function crearSuscripcionMP(params: {
   // de la cooperadora como fallback.
   const backUrl = params.backUrl ?? `${appUrl}/cuenta`
 
+  // IMPORTANTE: NO incluir `status: 'pending'`. Si se omite, MP responde
+  // con un init_point para que el pagador autorice la suscripción cargando
+  // su tarjeta. Si se pasa status:pending sin card_token_id, MP devuelve
+  // 500 "Internal server error" (es la causa principal de fallas en este
+  // endpoint según la doc oficial).
   const body = {
     reason: `Cooperadora Escolar Bratti - ${params.planNombre}`,
     external_reference: params.suscripcionId,
@@ -73,7 +78,6 @@ export async function crearSuscripcionMP(params: {
       currency_id: 'ARS',
     },
     back_url: backUrl,
-    status: 'pending',
   }
 
   try {
