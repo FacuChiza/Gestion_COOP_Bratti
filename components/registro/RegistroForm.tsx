@@ -95,7 +95,7 @@ export function RegistroForm() {
       precio: `${formatMonto(precios.anual)}/año`,
       desc: 'Un solo aporte por todo el ciclo lectivo.',
       colorActivo: 'border-emerald-600 bg-emerald-600 text-white',
-      proximamente: true,
+      proximamente: false,
     },
     {
       id: 'manual' as TipoPago,
