@@ -123,7 +123,16 @@ export async function crearSuscripcionMP(params: {
 
     if (!res.ok || !data.id || !data.init_point) {
       const msg = data.message || data.error || `HTTP ${res.status}`
-      console.error('[MP preapproval] error:', { status: res.status, body, response: data })
+      const tokenUsado =
+        process.env.MP_SUBSCRIPTION_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN || ''
+      console.error('[MP preapproval] error:', {
+        status: res.status,
+        body,
+        response: data,
+        // hint para diagnosticar: 4 últimos chars del token + si veníamos del fallback
+        tokenTail: tokenUsado.slice(-6),
+        tokenSource: process.env.MP_SUBSCRIPTION_ACCESS_TOKEN ? 'MP_SUBSCRIPTION_ACCESS_TOKEN' : 'MP_ACCESS_TOKEN (fallback)',
+      })
       return { ok: false, error: `MercadoPago rechazó la suscripción: ${msg}` }
     }
 
