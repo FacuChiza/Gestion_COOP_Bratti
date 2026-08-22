@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
     const resource  = typeof body.resource === 'string' ? body.resource : ''
 
     const rawType = String(body.type ?? body.topic ?? qsTopic ?? '').toLowerCase()
-    const dataId  = bodyData.id ?? qsId ?? (resource ? resource.split('/').pop() : undefined)
+    const dataIdRaw = bodyData.id ?? qsId ?? (resource ? resource.split('/').pop() : undefined)
+    const dataId: string | undefined = dataIdRaw != null && dataIdRaw !== '' ? String(dataIdRaw) : undefined
 
     const esSuscripcion = rawType.includes('subscription') || rawType.includes('preapproval')
     const esPago        = !esSuscripcion && rawType.includes('payment')
