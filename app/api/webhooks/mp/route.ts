@@ -60,6 +60,90 @@ export async function POST(req: NextRequest) {
       const tipo      = colonIdx >= 0 ? pago.external_reference.slice(0, colonIdx) : ''
       const referencia = colonIdx >= 0 ? pago.external_reference.slice(colonIdx + 1) : ''
 
+      // ── Aporte mensual de un alumno (flujo padrón, sin registro previo) ──
+      // Referencia: am:{alumnoId}. El pagador se resuelve/crea desde el
+      // email que el padre usó en el checkout de MercadoPago.
+      if (tipo === 'am') {
+        const alumnoId = referencia
+        const payerEmail = String(pago.payer?.email ?? '').toLowerCase()
+        const payerNombre =
+          [pago.payer?.first_name, pago.payer?.last_name].filter(Boolean).join(' ').trim() ||
+          (payerEmail ? payerEmail.split('@')[0] : 'Pagador')
+        const montoPagado = Math.round(pago.transaction_amount ?? 0)
+
+        const { data: alumno } = await supabase
+          .from('alumnos').select('id, nombre, pagador_id').eq('id', alumnoId).maybeSingle()
+        if (!alumno) return NextResponse.json({ ok: true })
+
+        // 1. Resolver / crear el pagador desde el email de MP
+        let pagadorId: string | null = alumno.pagador_id
+        if (payerEmail) {
+          const { data: existente } = await supabase
+            .from('pagadores').select('id').eq('mail', payerEmail).maybeSingle()
+          if (existente) {
+            pagadorId = existente.id
+          } else {
+            const { data: nuevo } = await supabase
+              .from('pagadores').insert({ nombre: payerNombre, mail: payerEmail }).select('id').single()
+            if (nuevo) pagadorId = nuevo.id
+          }
+          if (pagadorId && alumno.pagador_id !== pagadorId) {
+            await supabase.from('alumnos').update({ pagador_id: pagadorId }).eq('id', alumnoId)
+          }
+        }
+
+        // 2. Asegurar la cuota del mes actual y marcarla pagada
+        const ahora = new Date()
+        const mesNum = ahora.getMonth() + 1
+        const anio = ahora.getFullYear()
+        let cuotaId: string | null = null
+        const { data: cuotaExistente } = await supabase
+          .from('cuotas').select('id').eq('alumno_id', alumnoId).eq('mes', mesNum).eq('año', anio).maybeSingle()
+        if (cuotaExistente) {
+          cuotaId = cuotaExistente.id
+          await supabase.from('cuotas').update({ estado: 'pagada' }).eq('id', cuotaExistente.id)
+        } else {
+          const { data: nuevaCuota } = await supabase
+            .from('cuotas')
+            .insert({ alumno_id: alumnoId, mes: mesNum, año: anio, monto: montoPagado, estado: 'pagada' })
+            .select('id').single()
+          if (nuevaCuota) cuotaId = nuevaCuota.id
+        }
+
+        // 3. Registrar el pago + trazabilidad + notificaciones
+        if (pagadorId) {
+          const { data: pagoCreado } = await supabase
+            .from('pagos').insert({
+              pagador_id: pagadorId, monto: montoPagado, descuento: 0,
+              fecha: ahora.toISOString().split('T')[0],
+              metodo: 'mercadopago', referencia_externa: String(paymentId), registrado_por: 'webhook_mp',
+            }).select('id').single()
+          if (pagoCreado && cuotaId) {
+            await supabase.from('pagos_cuotas').insert({ pago_id: pagoCreado.id, cuota_id: cuotaId })
+          }
+          const { data: pg } = await supabase
+            .from('pagadores').select('nombre, telefono, mail').eq('id', pagadorId).single()
+          if (pg) {
+            const mesNombre = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(ahora)
+            if (pg.telefono) {
+              await wspConfirmacionPago({
+                telefono: pg.telefono, nombrePagador: pg.nombre.split(' ')[0],
+                nombreAlumno: alumno.nombre, mes: mesNombre, monto: montoPagado,
+              })
+            }
+            if (pg.mail) {
+              await enviarRecibo({
+                mail: pg.mail, nombrePagador: pg.nombre, nombreAlumno: alumno.nombre,
+                cuotas: [{ mes: formatMes(mesNum, anio), monto: montoPagado }],
+                montoTotal: montoPagado, metodoPago: 'mercadopago',
+                nroRecibo: String(paymentId), pagadorId,
+              })
+            }
+          }
+        }
+        return NextResponse.json({ ok: true })
+      }
+
       // ── Pago consolidado: todos los alumnos del pagador ──────
       if (tipo === 'pagador') {
         const { data: alumnos } = await supabase

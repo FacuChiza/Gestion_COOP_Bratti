@@ -148,12 +148,13 @@ export async function crearSuscripcionMP(params: {
 export async function crearPreferenciaMP(params: {
   titulo: string
   monto: number
-  pagadorEmail: string
-  referencia: string       // suscripcion_id o cuota_id
-  tipo: 'anual' | 'manual' | 'pagador'
+  /** Opcional: si no se pasa, el pagador ingresa su email en el checkout de MP. */
+  pagadorEmail?: string
+  referencia: string       // suscripcion_id, pagador_id o alumno_id según tipo
+  // am = aporte mensual de un alumno · aa = aporte anual de un alumno
+  tipo: 'anual' | 'manual' | 'pagador' | 'am' | 'aa'
   /**
    * URL base a la que MP debe volver. Si no se pasa, va al dashboard.
-   * Útil para el flujo express donde queremos volver a /aporte/[id].
    */
   backUrlBase?: string
 }): Promise<MpPreferenceResult> {
@@ -168,14 +169,13 @@ export async function crearPreferenciaMP(params: {
 
   const baseRet = params.backUrlBase ?? `${appUrl}/cuenta/dashboard`
 
-  const body = {
+  const body: Record<string, unknown> = {
     items: [{
       title: `Cooperadora Escolar - ${params.titulo}`,
       quantity: 1,
       unit_price: params.monto,
       currency_id: 'ARS',
     }],
-    payer: { email: params.pagadorEmail },
     external_reference: `${params.tipo}:${params.referencia}`,
     back_urls: {
       success: `${baseRet}?pago=ok`,
@@ -185,6 +185,9 @@ export async function crearPreferenciaMP(params: {
     auto_return: 'approved',
     notification_url: `${appUrl}/api/webhooks/mp`,
   }
+  // El email es opcional: si no lo tenemos (padrón sin pagador), el padre
+  // lo ingresa directamente en el checkout de MercadoPago.
+  if (params.pagadorEmail) body.payer = { email: params.pagadorEmail }
 
   try {
     const res = await fetch(`${BASE_URL}/checkout/preferences`, {

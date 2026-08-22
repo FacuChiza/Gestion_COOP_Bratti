@@ -20,7 +20,21 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git remote *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "mcp__a14a9a6c-db1d-45c9-9dc3-01372d25f44e__list_projects",
+      "mcp__a14a9a6c-db1d-45c9-9dc3-01372d25f44e__execute_sql",
+      "mcp__a14a9a6c-db1d-45c9-9dc3-01372d25f44e__get_advisors",
+      "mcp__3b049848-7ac2-4f0d-a962-bf03b5bdca90__list_teams",
+      "mcp__3b049848-7ac2-4f0d-a962-bf03b5bdca90__get_project_deployment_protection",
+      "mcp__3b049848-7ac2-4f0d-a962-bf03b5bdca90__get_runtime_logs",
+      "mcp__3b049848-7ac2-4f0d-a962-bf03b5bdca90__update_project_deployment_protection",
+      "mcp__a14a9a6c-db1d-45c9-9dc3-01372d25f44e__apply_migration",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -L \"https://gestion-coop-bratti.vercel.app/pagar\" --max-time 25)",
+      "mcp__3b049848-7ac2-4f0d-a962-bf03b5bdca90__list_deployments",
+      "mcp__3b049848-7ac2-4f0d-a962-bf03b5bdca90__get_deployment_build_logs",
+      "Bash(npx tsc *)",
+      "Bash(curl -s -X POST \"https://gestion-coop-bratti.vercel.app/api/webhooks/mp\" -H \"Content-Type: application/json\" -d '{\"type\":\"test\"}' -w \"\\\\nHTTP %{http_code}\\\\n\" --max-time 20)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"https://gestion-coop-bratti.vercel.app/pagar\" --max-time 20)"
     ]
   }
 }
