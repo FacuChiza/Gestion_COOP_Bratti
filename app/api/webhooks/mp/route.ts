@@ -13,10 +13,28 @@ import { formatMes } from '@/lib/utils'
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { type, data } = body
+    // MP manda distintos formatos según el evento configurado en el panel:
+    //   • "Pagos" (moderno):        { type: 'payment', data: { id } }
+    //   • "Pagos (legacy)" / IPN:   ?topic=payment&id=...  o  { topic, resource }
+    //   • "Planes y suscripciones": { type: 'subscription_preapproval' | 'subscription_authorized_payment', data:{ id } }
+    //   • preapproval (viejo):      { type: 'preapproval', data:{ id } }
+    // Normalizamos todo para no depender del formato exacto.
+    let body: Record<string, unknown> = {}
+    try { body = await req.json() } catch { body = {} }
 
-    if (!['payment', 'preapproval'].includes(type)) {
+    const qs        = req.nextUrl.searchParams
+    const qsTopic   = qs.get('topic') || qs.get('type') || ''
+    const qsId      = qs.get('id') || qs.get('data.id') || ''
+    const bodyData  = (body.data ?? {}) as { id?: string | number }
+    const resource  = typeof body.resource === 'string' ? body.resource : ''
+
+    const rawType = String(body.type ?? body.topic ?? qsTopic ?? '').toLowerCase()
+    const dataId  = bodyData.id ?? qsId ?? (resource ? resource.split('/').pop() : undefined)
+
+    const esSuscripcion = rawType.includes('subscription') || rawType.includes('preapproval')
+    const esPago        = !esSuscripcion && rawType.includes('payment')
+
+    if (!esPago && !esSuscripcion) {
       return NextResponse.json({ ok: true })
     }
 
@@ -25,8 +43,8 @@ export async function POST(req: NextRequest) {
     // ────────────────────────────────────────────────────────────
     // PAGO ÚNICO APROBADO (manual, anual o consolidado)
     // ────────────────────────────────────────────────────────────
-    if (type === 'payment') {
-      const paymentId = data?.id
+    if (esPago) {
+      const paymentId = dataId
       if (!paymentId) return NextResponse.json({ ok: true })
 
       const mpRes = await fetch(
@@ -192,27 +210,53 @@ export async function POST(req: NextRequest) {
     // ────────────────────────────────────────────────────────────
     // DÉBITO AUTOMÁTICO (preapproval / suscripción mensual)
     // ────────────────────────────────────────────────────────────
-    if (type === 'preapproval') {
-      const preapprovalId = data?.id
-      if (!preapprovalId) return NextResponse.json({ ok: true })
+    if (esSuscripcion) {
+      const eventId = dataId
+      if (!eventId) return NextResponse.json({ ok: true })
 
-      const mpRes = await fetch(
-        `https://api.mercadopago.com/preapproval/${preapprovalId}`,
-        { headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` } }
-      )
-      if (!mpRes.ok) return NextResponse.json({ ok: true })
-      const preapproval = await mpRes.json()
+      // Las suscripciones se crean con la app de MP de "Suscripciones",
+      // así que hay que consultarlas con ese token (no el de Checkout Pro).
+      const subToken = process.env.MP_SUBSCRIPTION_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN
 
-      // Activar suscripción cuando el usuario aprueba en MP
-      if (preapproval.status === 'authorized') {
-        await supabase
-          .from('suscripciones')
-          .update({ estado: 'activa', mp_status: 'activa', mp_preapproval_id: preapprovalId })
-          .eq('mp_preapproval_id', preapprovalId)
+      // subscription_authorized_payment = cobro mensual recurrente.
+      // subscription_preapproval / preapproval = alta/cambio de estado.
+      const esCobroRecurrente = rawType.includes('authorized_payment')
+
+      let preapprovalId: string | undefined
+
+      if (esCobroRecurrente) {
+        // El id es de un authorized_payment; resolvemos a qué suscripción pertenece.
+        const apRes = await fetch(
+          `https://api.mercadopago.com/authorized_payments/${eventId}`,
+          { headers: { Authorization: `Bearer ${subToken}` } }
+        )
+        if (!apRes.ok) return NextResponse.json({ ok: true })
+        const ap = await apRes.json()
+        if (!['approved', 'processed'].includes(ap.status)) return NextResponse.json({ ok: true })
+        preapprovalId = ap.preapproval_id
+      } else {
+        // El id ES el preapproval. Consultamos su estado.
+        const mpRes = await fetch(
+          `https://api.mercadopago.com/preapproval/${eventId}`,
+          { headers: { Authorization: `Bearer ${subToken}` } }
+        )
+        if (!mpRes.ok) return NextResponse.json({ ok: true })
+        const preapproval = await mpRes.json()
+        preapprovalId = eventId
+
+        // Activar la suscripción cuando el padre autoriza en MP
+        if (preapproval.status === 'authorized') {
+          await supabase
+            .from('suscripciones')
+            .update({ estado: 'activa', mp_status: 'activa', mp_preapproval_id: preapprovalId })
+            .eq('mp_preapproval_id', preapprovalId)
+        }
       }
 
+      if (!preapprovalId) return NextResponse.json({ ok: true })
+
       // Cobro mensual automático ejecutado por MP
-      if (preapproval.status === 'authorized' && body.action === 'payment.created') {
+      if (esCobroRecurrente) {
         const { data: suscripcion } = await supabase
           .from('suscripciones')
           .select('*, alumno_id, alumnos(nombre, pagadores(id, nombre, telefono, mail)), planes(precio_por_mes, nombre)')
