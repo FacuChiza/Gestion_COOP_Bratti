@@ -34,7 +34,10 @@
       "mcp__3b049848-7ac2-4f0d-a962-bf03b5bdca90__get_deployment_build_logs",
       "Bash(npx tsc *)",
       "Bash(curl -s -X POST \"https://gestion-coop-bratti.vercel.app/api/webhooks/mp\" -H \"Content-Type: application/json\" -d '{\"type\":\"test\"}' -w \"\\\\nHTTP %{http_code}\\\\n\" --max-time 20)",
-      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"https://gestion-coop-bratti.vercel.app/pagar\" --max-time 20)"
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"https://gestion-coop-bratti.vercel.app/pagar\" --max-time 20)",
+      "Bash(curl -s \"https://gestion-coop-bratti.vercel.app/pagar\" --max-time 20)",
+      "Bash(git branch *)",
+      "Bash(git tag *)"
     ]
   }
 }

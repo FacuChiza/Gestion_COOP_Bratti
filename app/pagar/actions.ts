@@ -10,6 +10,7 @@ export type AlumnoParaAporte = {
   grado: string
   turno: string | null
   montoMensual: number
+  montoAnual: number
   esFamilia: boolean
   cantidadFamilia: number
 }
@@ -61,6 +62,7 @@ export async function buscarAlumnoParaAporte(
       grado: a.grado,
       turno: a.turno,
       montoMensual: montoMensual(cfg, cantidadFamilia),
+      montoAnual: cfg.anual,
       esFamilia: cantidadFamilia >= 2,
       cantidadFamilia,
     })
@@ -96,6 +98,38 @@ export async function crearPagoMensualAlumno(
     monto,
     referencia: alumno.id,
     tipo: 'am',
+    backUrlBase: `${appUrl}/pagar`,
+  })
+
+  if (!mp.ok) return { error: mp.error }
+  return { initPoint: mp.init_point }
+}
+
+/**
+ * Crea la preferencia de MercadoPago para el aporte ANUAL de un alumno
+ * (pago único que cubre el ciclo lectivo). Se registra vía webhook (tipo 'aa').
+ */
+export async function crearPagoAnualAlumno(
+  alumnoId: string,
+): Promise<{ initPoint?: string; error?: string }> {
+  const admin = createAdminClient()
+  const { data: alumno } = await admin
+    .from('alumnos')
+    .select('id, nombre, activo')
+    .eq('id', alumnoId)
+    .maybeSingle()
+
+  if (!alumno || alumno.activo === false) return { error: 'Alumno no encontrado.' }
+
+  const cfg = await getPreciosConfig()
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const anio = new Date().getFullYear()
+
+  const mp = await crearPreferenciaMP({
+    titulo: `Aporte anual ${anio} — ${alumno.nombre}`,
+    monto: cfg.anual,
+    referencia: alumno.id,
+    tipo: 'aa',
     backUrlBase: `${appUrl}/pagar`,
   })
 

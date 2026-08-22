@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatMonto } from '@/lib/utils'
-import { buscarAlumnoParaAporte, crearPagoMensualAlumno, type AlumnoParaAporte } from '@/app/pagar/actions'
+import { buscarAlumnoParaAporte, crearPagoMensualAlumno, crearPagoAnualAlumno, type AlumnoParaAporte } from '@/app/pagar/actions'
 
 export function PagoAlumnoFlow() {
   const [term, setTerm] = useState('')
@@ -30,10 +30,12 @@ export function PagoAlumnoFlow() {
     })
   }
 
-  const pagar = (alumnoId: string) => {
+  const pagar = (alumnoId: string, modalidad: 'mensual' | 'anual') => {
     setError(null)
     startPagar(async () => {
-      const r = await crearPagoMensualAlumno(alumnoId)
+      const r = modalidad === 'anual'
+        ? await crearPagoAnualAlumno(alumnoId)
+        : await crearPagoMensualAlumno(alumnoId)
       if (r.error) { setError(r.error); return }
       if (r.initPoint) window.location.href = r.initPoint
     })
@@ -81,15 +83,25 @@ export function PagoAlumnoFlow() {
 
             <Button
               className="w-full h-12 gap-2 text-base bg-[#009EE3] hover:bg-[#0082BF]"
-              onClick={() => pagar(elegido.id)}
+              onClick={() => pagar(elegido.id, 'mensual')}
               disabled={pagando}
             >
               {pagando ? (
                 <><Loader2 className="h-5 w-5 animate-spin" /> Redirigiendo…</>
               ) : (
-                <><CreditCard className="h-5 w-5" /> Pagar con Mercado Pago</>
+                <><CreditCard className="h-5 w-5" /> Pagar este mes · {formatMonto(elegido.montoMensual)}</>
               )}
             </Button>
+
+            {/* Aporte anual (pago único del ciclo lectivo) */}
+            <button
+              type="button"
+              onClick={() => pagar(elegido.id, 'anual')}
+              disabled={pagando}
+              className="w-full flex items-center justify-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 py-1.5 disabled:opacity-50"
+            >
+              o pagar el año completo · <span className="font-semibold">{formatMonto(elegido.montoAnual)}</span>
+            </button>
 
             {error && (
               <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">{error}</p>
