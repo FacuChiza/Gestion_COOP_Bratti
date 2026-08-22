@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { crearPreferenciaMP } from '@/lib/mp'
+import { crearPreferenciaMP, crearSuscripcionMP } from '@/lib/mp'
 import { getPreciosConfig, montoMensual, cantidadFamiliaActiva } from '@/lib/precios'
 
 export type AlumnoParaAporte = {
@@ -134,5 +134,104 @@ export async function crearPagoAnualAlumno(
   })
 
   if (!mp.ok) return { error: mp.error }
+  return { initPoint: mp.init_point }
+}
+
+/**
+ * Activa el débito automático mensual para un alumno.
+ * Necesita el email (MP lo exige para la suscripción). El WhatsApp es
+ * opcional pero recomendado para los avisos. Crea/vincula el pagador,
+ * crea la suscripción en estado pendiente y devuelve el link de MP donde
+ * el padre carga la tarjeta. La suscripción se activa vía webhook.
+ */
+export async function crearDebitoAlumno(
+  alumnoId: string,
+  emailRaw: string,
+  telefonoRaw?: string,
+): Promise<{ initPoint?: string; error?: string }> {
+  const email = (emailRaw ?? '').trim().toLowerCase()
+  if (!email || !email.includes('@')) return { error: 'Ingresá un email válido.' }
+
+  const admin = createAdminClient()
+  const { data: alumno } = await admin
+    .from('alumnos')
+    .select('id, nombre, pagador_id, activo')
+    .eq('id', alumnoId)
+    .maybeSingle()
+  if (!alumno || alumno.activo === false) return { error: 'Alumno no encontrado.' }
+
+  const telDigits = (telefonoRaw ?? '').replace(/\D/g, '')
+  const telE164 = telDigits.length === 10 ? `+549${telDigits}` : null
+  const nombrePagador = email.split('@')[0]
+
+  // 1. Resolver / crear el pagador por email
+  let pagadorId: string | null = alumno.pagador_id
+  const { data: existente } = await admin
+    .from('pagadores').select('id').eq('mail', email).maybeSingle()
+  if (existente) {
+    pagadorId = existente.id
+    if (telE164) await admin.from('pagadores').update({ telefono: telE164 }).eq('id', existente.id)
+  } else {
+    const { data: nuevo } = await admin
+      .from('pagadores')
+      .insert({ nombre: nombrePagador, mail: email, telefono: telE164 })
+      .select('id').single()
+    if (nuevo) pagadorId = nuevo.id
+  }
+  if (!pagadorId) return { error: 'No se pudo registrar el pagador.' }
+  if (alumno.pagador_id !== pagadorId) {
+    await admin.from('alumnos').update({ pagador_id: pagadorId }).eq('id', alumnoId)
+  }
+
+  // 2. Monto con descuento por hermanos
+  const cfg = await getPreciosConfig()
+  const cantidad = await cantidadFamiliaActiva(pagadorId)
+  const monto = montoMensual(cfg, cantidad)
+
+  // 3. Plan mensual (para el FK de la suscripción)
+  const { data: plan } = await admin
+    .from('planes').select('id').eq('tipo', 'mensual').limit(1).maybeSingle()
+  if (!plan) return { error: 'No hay un plan mensual configurado. Avisá a la cooperadora.' }
+
+  // 4. Cancelar débitos previos del alumno para no duplicar
+  await admin
+    .from('suscripciones')
+    .update({ estado: 'cancelada' })
+    .eq('alumno_id', alumnoId)
+    .eq('tipo_pago', 'suscripcion')
+    .in('estado', ['activa', 'pendiente'])
+
+  // 5. Crear la suscripción pendiente
+  const { data: susc } = await admin
+    .from('suscripciones')
+    .insert({
+      alumno_id: alumnoId,
+      plan_id: plan.id,
+      fecha_inicio: new Date().toISOString().split('T')[0],
+      estado: 'pendiente',
+      metodo_pago: 'mercadopago',
+      tipo_pago: 'suscripcion',
+      mp_status: 'pending',
+    })
+    .select('id').single()
+  if (!susc) return { error: 'No se pudo crear la suscripción.' }
+
+  // 6. Preapproval en MP
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const mp = await crearSuscripcionMP({
+    pagadorNombre: nombrePagador,
+    pagadorEmail: email,
+    monto,
+    planNombre: `Aporte mensual — ${alumno.nombre}`,
+    suscripcionId: susc.id,
+    backUrl: `${appUrl}/pagar?pago=ok`,
+  })
+
+  if (!mp.ok) {
+    await admin.from('suscripciones').delete().eq('id', susc.id)
+    return { error: mp.error }
+  }
+
+  await admin.from('suscripciones').update({ mp_preapproval_id: mp.id }).eq('id', susc.id)
   return { initPoint: mp.init_point }
 }

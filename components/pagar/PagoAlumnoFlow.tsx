@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Search, ArrowRight, CreditCard, GraduationCap, Loader2, ChevronLeft } from 'lucide-react'
+import { Search, ArrowRight, CreditCard, GraduationCap, Loader2, ChevronLeft, Repeat } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { formatMonto } from '@/lib/utils'
-import { buscarAlumnoParaAporte, crearPagoMensualAlumno, crearPagoAnualAlumno, type AlumnoParaAporte } from '@/app/pagar/actions'
+import { buscarAlumnoParaAporte, crearPagoMensualAlumno, crearPagoAnualAlumno, crearDebitoAlumno, type AlumnoParaAporte } from '@/app/pagar/actions'
 
 export function PagoAlumnoFlow() {
   const [term, setTerm] = useState('')
@@ -15,6 +16,9 @@ export function PagoAlumnoFlow() {
   const [elegido, setElegido] = useState<AlumnoParaAporte | null>(null)
   const [buscando, startBuscar] = useTransition()
   const [pagando, startPagar] = useTransition()
+  const [mostrarDebito, setMostrarDebito] = useState(false)
+  const [debEmail, setDebEmail] = useState('')
+  const [debTel, setDebTel] = useState('')
 
   const buscar = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -41,7 +45,20 @@ export function PagoAlumnoFlow() {
     })
   }
 
-  const volver = () => { setElegido(null); setResultados(null) }
+  const activarDebito = (alumnoId: string) => {
+    setError(null)
+    if (!debEmail.trim().includes('@')) { setError('Ingresá un email válido para el débito.'); return }
+    startPagar(async () => {
+      const r = await crearDebitoAlumno(alumnoId, debEmail, debTel)
+      if (r.error) { setError(r.error); return }
+      if (r.initPoint) window.location.href = r.initPoint
+    })
+  }
+
+  const volver = () => {
+    setElegido(null); setResultados(null)
+    setMostrarDebito(false); setDebEmail(''); setDebTel('')
+  }
 
   // ── Card del alumno elegido → pagar ─────────────────────────
   if (elegido) {
@@ -102,6 +119,62 @@ export function PagoAlumnoFlow() {
             >
               o pagar el año completo · <span className="font-semibold">{formatMonto(elegido.montoAnual)}</span>
             </button>
+
+            {/* Débito automático */}
+            <div className="pt-3 border-t border-slate-100">
+              {!mostrarDebito ? (
+                <button
+                  type="button"
+                  onClick={() => { setMostrarDebito(true); setError(null) }}
+                  disabled={pagando}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 hover:border-slate-300 py-2.5 text-sm font-medium text-slate-700 transition-colors disabled:opacity-50"
+                >
+                  <Repeat className="h-4 w-4" />
+                  Activar débito automático
+                </button>
+              ) : (
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Débito automático</p>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Cargás tu tarjeta una vez y se cobra solo {formatMonto(elegido.montoMensual)} cada mes.
+                      Lo podés cancelar cuando quieras desde Mercado Pago.
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="deb-email" className="text-xs">Tu email *</Label>
+                    <Input
+                      id="deb-email"
+                      type="email"
+                      value={debEmail}
+                      onChange={(e) => setDebEmail(e.target.value)}
+                      placeholder="tu@email.com"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Tu WhatsApp (opcional, para recibos)</Label>
+                    <PhoneInput value={debTel} onChange={setDebTel} />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => { setMostrarDebito(false); setError(null) }}
+                      disabled={pagando}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      className="flex-1 gap-1.5"
+                      onClick={() => activarDebito(elegido.id)}
+                      disabled={pagando || !debEmail.trim()}
+                    >
+                      {pagando ? <><Loader2 className="h-4 w-4 animate-spin" /> …</> : 'Activar'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {error && (
               <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">{error}</p>
