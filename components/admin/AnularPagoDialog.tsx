@@ -41,7 +41,7 @@ export function AnularPagoDialog({ pagoId, monto, pagador, open, onClose, onAnul
       if (r?.error) {
         toast.error(r.error)
       } else {
-        toast.success(`Pago anulado. ${r.cuotasRevertidas ?? 0} aporte(s) volvieron a pendiente.`)
+        toast.success(`Aporte anulado. ${r.cuotasRevertidas ?? 0} aporte(s) volvieron a pendiente.`)
         setMotivo('')
         onAnulado?.()
         onClose()
@@ -53,10 +53,10 @@ export function AnularPagoDialog({ pagoId, monto, pagador, open, onClose, onAnul
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Anular pago</DialogTitle>
+          <DialogTitle>Anular aporte recibido</DialogTitle>
           <DialogDescription>
-            El pago no se borra de la base — queda marcado como anulado con el motivo y la fecha.
-            Los aportes que saldó vuelven a aparecer como pendientes.
+            No se borra de la base — queda marcado como anulado con el motivo y la fecha.
+            Los aportes que había saldado vuelven a aparecer como pendientes.
           </DialogDescription>
         </DialogHeader>
 
@@ -86,7 +86,7 @@ export function AnularPagoDialog({ pagoId, monto, pagador, open, onClose, onAnul
             disabled={isPending}
             className="bg-red-600 hover:bg-red-700 text-white"
           >
-            {isPending ? 'Anulando...' : 'Anular pago'}
+            {isPending ? 'Anulando...' : 'Anular aporte'}
           </Button>
         </div>
       </DialogContent>

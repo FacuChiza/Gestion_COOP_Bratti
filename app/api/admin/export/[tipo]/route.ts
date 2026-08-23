@@ -163,8 +163,8 @@ export async function GET(
       { key: 'grado',              label: 'Grado' },
       { key: 'turno',              label: 'Turno' },
       { key: 'activo',             label: 'Activo' },
-      { key: 'pagador',            label: 'Pagador/a' },
-      { key: 'pagador_email',      label: 'Email pagador' },
+      { key: 'pagador',            label: 'Aportante' },
+      { key: 'pagador_email',      label: 'Email aportante' },
       { key: 'pagador_telefono',   label: 'Teléfono' },
       { key: 'pagador_dni',        label: 'DNI' },
       { key: 'plan',               label: 'Plan' },
@@ -240,7 +240,7 @@ export async function GET(
     })
 
     const csv = toCSV(rows, [
-      { key: 'nombre',                     label: 'Pagador/a' },
+      { key: 'nombre',                     label: 'Aportante' },
       { key: 'dni',                        label: 'DNI' },
       { key: 'email',                      label: 'Email' },
       { key: 'telefono',                   label: 'Teléfono' },
@@ -287,8 +287,8 @@ export async function GET(
       { key: 'alumno',         label: 'Alumno' },
       { key: 'grado',          label: 'Grado' },
       { key: 'turno',          label: 'Turno' },
-      { key: 'pagador',        label: 'Pagador/a' },
-      { key: 'email_pagador',  label: 'Email pagador' },
+      { key: 'pagador',        label: 'Aportante' },
+      { key: 'email_pagador',  label: 'Email aportante' },
       { key: 'periodo',        label: 'Período' },
       { key: 'mes',            label: 'Mes' },
       { key: 'año',            label: 'Año' },
@@ -367,8 +367,8 @@ export async function GET(
 
     const csv = toCSV(rows, [
       { key: 'fecha',             label: 'Fecha' },
-      { key: 'pagador',           label: 'Pagador/a' },
-      { key: 'email_pagador',     label: 'Email pagador' },
+      { key: 'pagador',           label: 'Aportante' },
+      { key: 'email_pagador',     label: 'Email aportante' },
       { key: 'monto',             label: 'Monto ($)' },
       { key: 'descuento',         label: 'Descuento' },
       { key: 'metodo',            label: 'Método' },

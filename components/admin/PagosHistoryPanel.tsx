@@ -80,7 +80,7 @@ export function PagosHistoryPanel() {
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
               <th className="text-left px-4 py-3 font-medium text-slate-600">Fecha</th>
-              <th className="text-left px-4 py-3 font-medium text-slate-600">Pagador</th>
+              <th className="text-left px-4 py-3 font-medium text-slate-600">Aportante</th>
               <th className="text-left px-4 py-3 font-medium text-slate-600">Aportes saldados</th>
               <th className="text-left px-4 py-3 font-medium text-slate-600">Método</th>
               <th className="text-right px-4 py-3 font-medium text-slate-600">Descuento</th>
@@ -138,7 +138,7 @@ export function PagosHistoryPanel() {
                       variant="ghost"
                       onClick={() => setAnulando(p)}
                       className="text-red-600 hover:bg-red-50"
-                      title="Anular pago"
+                      title="Anular aporte"
                     >
                       <Ban className="h-3.5 w-3.5" />
                     </Button>
@@ -216,7 +216,7 @@ export function PagosHistoryPanel() {
                   className="text-red-600 hover:bg-red-50 h-8 w-full justify-center gap-1.5 text-xs"
                 >
                   <Ban className="h-3.5 w-3.5" />
-                  Anular pago
+                  Anular aporte
                 </Button>
               </div>
             )}

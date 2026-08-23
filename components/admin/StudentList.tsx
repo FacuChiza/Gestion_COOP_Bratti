@@ -116,7 +116,7 @@ export function StudentList({ alumnos, planes = [] }: Props) {
             <tr>
               <th className="text-left px-4 py-3 font-medium text-slate-600">Alumno</th>
               <th className="text-left px-4 py-3 font-medium text-slate-600">Grado / Turno</th>
-              <th className="text-left px-4 py-3 font-medium text-slate-600">Pagador</th>
+              <th className="text-left px-4 py-3 font-medium text-slate-600">Aportante</th>
               <th className="text-left px-4 py-3 font-medium text-slate-600">
                 {formatMes(mesActual, añoActual)}
               </th>
@@ -251,7 +251,7 @@ export function StudentList({ alumnos, planes = [] }: Props) {
 
             {/* Pagador */}
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500">Pagador</span>
+              <span className="text-slate-500">Aportante</span>
               <span className="text-slate-700 truncate ml-2">
                 {alumno.pagadores?.nombre ?? <span className="text-slate-400">—</span>}
               </span>

@@ -24,28 +24,28 @@ const EXPORTS: Exportable[] = [
   {
     tipo: 'alumnos',
     titulo: 'Alumnos',
-    descripcion: 'Listado completo de alumnos con su pagador asignado.',
+    descripcion: 'Listado completo de alumnos con su aportante asignado.',
     icon: Users,
     filtroFecha: false,
   },
   {
     tipo: 'pagadores',
-    titulo: 'Pagadores',
-    descripcion: 'Listado de padres/tutores registrados con sus datos de contacto.',
+    titulo: 'Aportantes',
+    descripcion: 'Listado de aportantes (padres/tutores) con sus datos de contacto.',
     icon: UserCircle,
     filtroFecha: false,
   },
   {
     tipo: 'aportes',
-    titulo: 'Aportes',
-    descripcion: 'Aportes generados (pagados, pendientes, no realizados). Filtrable por mes/año.',
+    titulo: 'Aportes esperados',
+    descripcion: 'Aportes generados por mes (pagados, pendientes, no realizados). Filtrable por mes/año.',
     icon: Receipt,
     filtroFecha: true,
   },
   {
     tipo: 'pagos',
-    titulo: 'Pagos recibidos',
-    descripcion: 'Histórico de pagos cobrados, con método (MP, efectivo, transferencia) y monto.',
+    titulo: 'Aportes recibidos',
+    descripcion: 'Histórico de aportes recibidos, con método (MP, efectivo, transferencia) y monto.',
     icon: CreditCard,
     filtroFecha: true,
   },
@@ -72,7 +72,7 @@ export function DataExportPanel() {
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-slate-200 bg-white p-4">
-        <h3 className="font-medium mb-2 text-sm sm:text-base">Filtros (para Aportes y Pagos)</h3>
+        <h3 className="font-medium mb-2 text-sm sm:text-base">Filtros (para aportes esperados y recibidos)</h3>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2">
           <select
             value={año}
@@ -94,7 +94,7 @@ export function DataExportPanel() {
             ))}
           </select>
           <span className="col-span-2 text-xs text-slate-500 sm:ml-2">
-            Solo se aplican a los reportes de Aportes y Pagos.
+            Solo se aplican a los reportes de aportes esperados y recibidos.
           </span>
         </div>
       </div>

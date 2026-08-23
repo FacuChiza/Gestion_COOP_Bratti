@@ -33,7 +33,7 @@ export async function activarDebitoAutomatico(pagadorId: string): Promise<{
     .eq('id', pagadorId)
     .maybeSingle()
 
-  if (!pagador) return { error: 'Pagador no encontrado' }
+  if (!pagador) return { error: 'No encontramos al aportante' }
   if (!pagador.mail) return { error: 'El pagador no tiene email cargado. Contactá a la cooperadora.' }
 
   // 2. Alumnos activos del pagador

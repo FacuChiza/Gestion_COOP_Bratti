@@ -32,7 +32,7 @@ export function AddPagadorDialog({ open, onClose, planes }: Props) {
       if (result?.error) {
         toast.error(result.error)
       } else {
-        toast.success('Pagador y alumno dados de alta correctamente')
+        toast.success('Aportante y alumno dados de alta correctamente')
         formRef.current?.reset()
         onClose()
       }
@@ -43,17 +43,17 @@ export function AddPagadorDialog({ open, onClose, planes }: Props) {
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Agregar pagador y alumno</DialogTitle>
+          <DialogTitle>Agregar aportante y alumno</DialogTitle>
           <DialogDescription>
-            Se creará un usuario de acceso al portal con el mail y contraseña ingresados.
+            Cargá los datos del aportante (adulto responsable) y del alumno.
           </DialogDescription>
         </DialogHeader>
 
         <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
-          {/* Sección pagador */}
+          {/* Sección aportante */}
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b border-slate-100">
-              Datos del pagador
+              Datos del aportante
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1">

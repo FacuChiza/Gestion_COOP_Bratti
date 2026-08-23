@@ -289,7 +289,7 @@ export async function altaPagadorYAlumno(formData: FormData) {
 
   if (errorPagador || !pagador) {
     await admin.auth.admin.deleteUser(authUser.user.id)
-    return { error: 'Error al crear el pagador' }
+    return { error: 'Error al crear el aportante' }
   }
 
   // Crear alumno
@@ -565,7 +565,7 @@ export async function editarPagador(formData: FormData) {
 
   if (error) {
     console.error('[editarPagador]', error)
-    return { error: 'Error al actualizar el pagador' }
+    return { error: 'Error al actualizar el aportante' }
   }
   revalidatePath('/admin')
   return { success: true }

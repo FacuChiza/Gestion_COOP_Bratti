@@ -83,7 +83,7 @@ export function LinkPagoButton({ pagadorId, pagadorNombre, pagadorTelefono }: Pr
           <DialogHeader>
             <DialogTitle>Link de aporte</DialogTitle>
             <DialogDescription>
-              Compartí este código QR o link con {pagadorNombre ?? 'el pagador'} para que colabore directamente, sin registro.
+              Compartí este código QR o link con {pagadorNombre ?? 'el aportante'} para que colabore directamente, sin registro.
             </DialogDescription>
           </DialogHeader>
 

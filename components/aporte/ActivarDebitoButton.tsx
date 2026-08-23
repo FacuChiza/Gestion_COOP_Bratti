@@ -21,7 +21,7 @@ export function ActivarDebitoButton({ pagadorId, yaActivo }: Props) {
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center">
         <p className="text-sm font-semibold text-emerald-800">✓ Débito automático activo</p>
         <p className="text-xs text-emerald-700 mt-0.5">
-          Mercado Pago cobra solo todos los meses. Vas a recibir la confirmación por mail.
+          El aporte se realiza solo todos los meses. Vas a recibir la confirmación por mail.
         </p>
       </div>
     )
@@ -48,8 +48,8 @@ export function ActivarDebitoButton({ pagadorId, yaActivo }: Props) {
         <div>
           <p className="text-sm font-semibold text-slate-900">¿Activar débito automático?</p>
           <p className="text-xs text-slate-600 mt-1">
-            Cargás tu tarjeta una vez en Mercado Pago y se cobra automáticamente cada mes
-            el aporte de tu/s estudiante/s. Lo podés cancelar cuando quieras desde el portal.
+            Cargás tu tarjeta una vez en Mercado Pago y el aporte de tu/s estudiante/s se
+            realiza automáticamente cada mes. Lo podés cancelar cuando quieras.
           </p>
         </div>
         <div className="flex gap-2">

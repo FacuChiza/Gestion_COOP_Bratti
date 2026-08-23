@@ -137,8 +137,8 @@ export function PagoAlumnoFlow() {
                   <div>
                     <p className="text-sm font-semibold text-slate-900">Débito automático</p>
                     <p className="text-xs text-slate-600 mt-0.5">
-                      Cargás tu tarjeta una vez y se cobra solo {formatMonto(elegido.montoMensual)} cada mes.
-                      Lo podés cancelar cuando quieras desde Mercado Pago.
+                      Cargás tu tarjeta una vez y el aporte de {formatMonto(elegido.montoMensual)} se
+                      realiza solo cada mes. Lo podés cancelar cuando quieras desde Mercado Pago.
                     </p>
                   </div>
                   <div className="space-y-1">

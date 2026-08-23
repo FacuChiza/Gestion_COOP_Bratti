@@ -153,7 +153,7 @@ export async function enviarRecibo(params: ReciboParams): Promise<boolean> {
     <table width="100%" style="background:#f8fafc;border-radius:10px;margin-bottom:20px">
       <tr>
         <td style="padding:14px 16px">
-          <p style="margin:0;font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">Pagador/a</p>
+          <p style="margin:0;font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">Aportante</p>
           <p style="margin:4px 0 0;font-weight:600;color:#1e293b">${params.nombrePagador}</p>
         </td>
         <td style="padding:14px 16px;border-left:1px solid #e2e8f0">

@@ -56,7 +56,7 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: P
               </TabsTrigger>
               <TabsTrigger value="pagos" className="gap-2 px-3 sm:px-4 h-10 sm:h-11">
                 <Receipt className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Pagos</span>
+                <span className="hidden sm:inline">Aportes recibidos</span>
               </TabsTrigger>
               <TabsTrigger value="cron" className="gap-2 px-3 sm:px-4 h-10 sm:h-11">
                 <Calendar className="h-4 w-4 shrink-0" />
@@ -85,10 +85,10 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: P
           <Button
             onClick={() => setAddDialogOpen(true)}
             className="gap-2 h-10 sm:h-11 px-3 sm:px-5 shadow-sm hover:shadow-md transition-shadow shrink-0"
-            aria-label="Nuevo pagador/alumno"
+            aria-label="Nuevo aportante/alumno"
           >
             <UserPlus className="h-4 w-4" />
-            <span className="hidden md:inline">Nuevo pagador/alumno</span>
+            <span className="hidden md:inline">Nuevo aportante/alumno</span>
           </Button>
         </div>
 

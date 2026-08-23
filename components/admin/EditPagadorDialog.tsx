@@ -43,7 +43,7 @@ export function EditPagadorDialog({ pagador, open, onClose }: Props) {
     startTransition(async () => {
       const r = await editarPagador(fd)
       if (r?.error) toast.error(r.error)
-      else { toast.success('Pagador actualizado'); onClose() }
+      else { toast.success('Aportante actualizado'); onClose() }
     })
   }
 
@@ -51,9 +51,9 @@ export function EditPagadorDialog({ pagador, open, onClose }: Props) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Editar pagador</DialogTitle>
+          <DialogTitle>Editar aportante</DialogTitle>
           <DialogDescription>
-            Datos de contacto del pagador / tutor.
+            Datos de contacto del aportante / tutor.
           </DialogDescription>
         </DialogHeader>
 
@@ -79,7 +79,7 @@ export function EditPagadorDialog({ pagador, open, onClose }: Props) {
             <Input type="email" value={mail} onChange={(e) => setMail(e.target.value)} />
             {mailCambiado && (
               <p className="text-xs text-amber-600">
-                ⚠️ Cambiar el email también actualiza el usuario de login en el sistema. El pagador deberá usar el nuevo email para entrar al portal.
+                ⚠️ Cambiar el email también actualiza el usuario de acceso en el sistema. El aportante deberá usar el nuevo email.
               </p>
             )}
           </div>

@@ -18,12 +18,12 @@ type Props = {
 const LABELS: Record<string, { label: string; descripcion: string; tipo?: 'numero' | 'porcentaje' | 'dia' }> = {
   meses_alerta_deuda: {
     label: 'Umbral de alerta por aportes pendientes',
-    descripcion: 'Cuando un alumno acumula esta cantidad de aportes sin realizar, se envía una única alerta por WhatsApp al pagador. Subilo si querés ser menos insistente, bajalo si querés alertar antes.',
+    descripcion: 'Cuando un alumno acumula esta cantidad de aportes sin realizar, se envía una única alerta por WhatsApp al aportante. Subilo si querés ser menos insistente, bajalo si querés alertar antes.',
     tipo: 'numero',
   },
   descuento_maximo_porcentaje: {
     label: 'Descuento máximo permitido (%)',
-    descripcion: 'Tope de descuento que se puede aplicar al cobrar un aporte (ej: por hermanos, por beca). El sistema impide cargar descuentos mayores a este valor.',
+    descripcion: 'Tope de descuento que se puede aplicar al registrar un aporte (ej: por hermanos, por beca). El sistema impide cargar descuentos mayores a este valor.',
     tipo: 'porcentaje',
   },
   dia_vencimiento: {
