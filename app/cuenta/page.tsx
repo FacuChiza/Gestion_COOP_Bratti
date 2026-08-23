@@ -1,12 +1,7 @@
-import { Suspense } from 'react'
-import { LoginForm } from '@/components/cuenta/LoginForm'
+import { redirect } from 'next/navigation'
 
-// LoginForm usa useSearchParams() (para leer ?auth=expirado), por eso
-// necesita estar envuelto en Suspense durante el static render.
+// El portal con login por código quedó reemplazado por /pagar, que muestra
+// el aporte y permite pagar sin cuenta ni código. Redirigimos links viejos.
 export default function CuentaPage() {
-  return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
-  )
+  redirect('/pagar')
 }

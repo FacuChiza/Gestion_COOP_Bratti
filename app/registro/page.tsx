@@ -1,43 +1,8 @@
-import { Suspense } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { RegistroForm } from '@/components/registro/RegistroForm'
-import { Logo } from '@/components/Logo'
+import { redirect } from 'next/navigation'
 
-export const metadata = {
-  title: 'Registrarse — Cooperadora Escolar',
-}
-
+// El registro con 8 campos quedó obsoleto: en el modelo nuevo la escuela
+// precarga el padrón y el padre paga por DNI del alumno, sin registrarse.
+// Redirigimos cualquier link viejo al flujo nuevo.
 export default function RegistroPage() {
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <Logo size={48} subtitulo={null} />
-          <div className="border-l border-slate-200 pl-3">
-            <p className="font-bold text-slate-900 text-lg leading-tight">Cooperadora</p>
-            <p className="text-sm text-slate-500">Sumate y gestioná tus aportes desde el portal</p>
-          </div>
-        </div>
-
-        <Card className="shadow-md">
-          <CardContent className="pt-6">
-            {/* RegistroForm usa useSearchParams (lee ?dni=...), tiene que ir
-                envuelto en Suspense para que Next 14 lo prerendere bien. */}
-            <Suspense>
-              <RegistroForm />
-            </Suspense>
-          </CardContent>
-        </Card>
-
-        <p className="text-center text-xs text-slate-400 mt-4">
-          ¿Ya tenés cuenta?{' '}
-          <a href="/cuenta" className="underline hover:text-slate-600">
-            Ingresá acá
-          </a>
-        </p>
-      </div>
-    </div>
-  )
+  redirect('/pagar')
 }

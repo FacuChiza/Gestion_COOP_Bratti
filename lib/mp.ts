@@ -93,7 +93,9 @@ export async function crearSuscripcionMP(params: {
   // 500 "Internal server error" (es la causa principal de fallas en este
   // endpoint según la doc oficial).
   const body = {
-    reason: `Cooperadora Escolar Bratti - ${params.planNombre}`,
+    // MP limita `reason` a 60 caracteres. Usamos uno corto y fijo; el
+    // detalle (alumno) queda en external_reference y en la suscripción.
+    reason: 'Aporte mensual - Cooperadora Bratti',
     external_reference: params.suscripcionId,
     payer_email: params.pagadorEmail,
     auto_recurring: {
