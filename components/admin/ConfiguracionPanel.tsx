@@ -16,6 +16,37 @@ type Props = {
 // Metadata legible para cada clave conocida.
 // Si aparece una clave nueva en la DB, se muestra con la clave cruda.
 const LABELS: Record<string, { label: string; descripcion: string; tipo?: 'numero' | 'porcentaje' | 'dia' }> = {
+  aporte_mensual: {
+    label: 'Aporte mensual ($)',
+    descripcion: 'Monto del aporte voluntario por alumno por mes. Aplica a los aportes que se generen a partir de ahora.',
+    tipo: 'numero',
+  },
+  aporte_hermanos: {
+    label: 'Aporte mensual con hermanos ($)',
+    descripcion: 'Monto por alumno cuando la familia tiene 2 o más alumnos activos (descuento por hermanos).',
+    tipo: 'numero',
+  },
+  aporte_anual: {
+    label: 'Aporte anual ($)',
+    descripcion: 'Monto para quien elige pagar el año completo de una vez.',
+    tipo: 'numero',
+  },
+  transferencia_alias: {
+    label: 'Alias para transferencias',
+    descripcion: 'Alias de la cuenta de la cooperadora. Si lo completás, el aportante puede transferir directo (sin comisión de Mercado Pago). Dejalo vacío para ocultar esta opción.',
+  },
+  transferencia_cbu: {
+    label: 'CBU/CVU para transferencias',
+    descripcion: 'CBU o CVU de la cuenta de la cooperadora (opcional, complementa al alias).',
+  },
+  transferencia_titular: {
+    label: 'Titular de la cuenta',
+    descripcion: 'Nombre del titular de la cuenta, como aparece en el banco/billetera.',
+  },
+  transferencia_banco: {
+    label: 'Banco / billetera',
+    descripcion: 'Nombre del banco o billetera de la cuenta (ej: Banco Nación, Mercado Pago, Ualá).',
+  },
   meses_alerta_deuda: {
     label: 'Umbral de alerta por aportes pendientes',
     descripcion: 'Cuando un alumno acumula esta cantidad de aportes sin realizar, se envía una única alerta por WhatsApp al aportante. Subilo si querés ser menos insistente, bajalo si querés alertar antes.',

@@ -9,6 +9,7 @@
 import { CheckCircle2, AlertCircle, Clock } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import { PagoAlumnoFlow } from '@/components/pagar/PagoAlumnoFlow'
+import { getDatosTransferencia } from './actions'
 
 export const metadata = {
   title: 'Aportar — Cooperadora Bratti',
@@ -32,12 +33,13 @@ function Layout({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function PagarPublicoPage({
+export default async function PagarPublicoPage({
   searchParams,
 }: {
   searchParams: { pago?: string }
 }) {
   const banner = searchParams.pago
+  const transferencia = await getDatosTransferencia()
 
   if (banner === 'ok') {
     return (
@@ -95,7 +97,7 @@ export default function PagarPublicoPage({
             Poné el DNI o el nombre del alumno/a y te aparece el aporte para pagar. Sin registro.
           </p>
         </div>
-        <PagoAlumnoFlow />
+        <PagoAlumnoFlow transferencia={transferencia} />
       </div>
     </Layout>
   )

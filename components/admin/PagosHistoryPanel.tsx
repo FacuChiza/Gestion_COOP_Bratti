@@ -50,8 +50,10 @@ export function PagosHistoryPanel() {
   }
 
   const metodoBadge = (m: string) => {
-    if (m === 'mercadopago') return <Badge variant="secondary">MP</Badge>
+    if (m === 'mercadopago')   return <Badge variant="secondary">MP</Badge>
     if (m === 'transferencia') return <Badge variant="outline">Transf.</Badge>
+    if (m === 'modo')          return <Badge variant="outline">MODO</Badge>
+    if (m === 'otro')          return <Badge variant="outline">Otro</Badge>
     return <Badge variant="outline">Efectivo</Badge>
   }
 

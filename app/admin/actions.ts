@@ -124,15 +124,17 @@ export async function registrarPago(formData: FormData) {
   // por lo que RLS bloquearía los INSERTs con el client normal.
   const admin = createAdminClient()
 
-  const pagadorId = formData.get('pagador_id') as string
+  const pagadorId = (formData.get('pagador_id') as string) || null
   const cuotaIds  = formData.getAll('cuota_ids') as string[]
   const notas     = formData.get('notas') as string | null
+  const comprobante = (formData.get('comprobante') as string ?? '').trim() || null
   const descuentoRaw = formData.get('descuento') as string | null
   const metodoForm = (formData.get('metodo') as string | null) ?? 'efectivo'
-  const metodo = ['efectivo', 'transferencia', 'mercadopago'].includes(metodoForm) ? metodoForm : 'efectivo'
+  const METODOS = ['efectivo', 'transferencia', 'mercadopago', 'modo', 'otro']
+  const metodo = METODOS.includes(metodoForm) ? metodoForm : 'efectivo'
 
-  if (!pagadorId || cuotaIds.length === 0) {
-    return { error: 'Faltan datos requeridos' }
+  if (cuotaIds.length === 0) {
+    return { error: 'Seleccioná al menos un aporte' }
   }
 
   // Calcular monto bruto y aplicar descuento (si existe)
@@ -171,6 +173,7 @@ export async function registrarPago(formData: FormData) {
       descuento,
       fecha:       new Date().toISOString().split('T')[0],
       metodo,
+      referencia_externa: comprobante,  // nro de comprobante / operación
       registrado_por: 'admin',
       notas:       notas || null,
     })
@@ -193,12 +196,14 @@ export async function registrarPago(formData: FormData) {
     .update({ estado: 'pagada' })
     .in('id', cuotaIds)
 
-  // ── Notificaciones al pagador ──────────────────────────────
-  const { data: pagadorInfo } = await admin
-    .from('pagadores')
-    .select('nombre, telefono, mail')
-    .eq('id', pagadorId)
-    .single()
+  // ── Notificaciones al aportante (solo si el alumno tiene uno) ──
+  const { data: pagadorInfo } = pagadorId
+    ? await admin
+        .from('pagadores')
+        .select('nombre, telefono, mail')
+        .eq('id', pagadorId)
+        .maybeSingle()
+    : { data: null }
 
   // Traer detalles de cuotas para el recibo
   type CuotaDetalle = { mes: number; año: number; monto: number; alumnos: { nombre: string } | null }
@@ -235,9 +240,9 @@ export async function registrarPago(formData: FormData) {
           monto: c.monto,
         })),
         montoTotal,
-        metodoPago: 'efectivo',
+        metodoPago: metodo === 'mercadopago' ? 'mercadopago' : 'efectivo',
         nroRecibo:  pago.id,
-        pagadorId,
+        pagadorId:  pagadorId ?? undefined,
       })
     }
   }
@@ -443,11 +448,11 @@ export async function actualizarConfiguracion(formData: FormData) {
   const valor = (formData.get('valor') as string ?? '').trim()
 
   if (!clave) return { error: 'Clave inválida' }
-  if (!valor) return { error: 'El valor no puede estar vacío' }
 
   // Validaciones específicas por clave conocida
-  const numericKeys = ['meses_alerta_deuda', 'descuento_maximo_porcentaje', 'dia_vencimiento']
+  const numericKeys = ['meses_alerta_deuda', 'descuento_maximo_porcentaje', 'dia_vencimiento', 'aporte_mensual', 'aporte_hermanos', 'aporte_anual']
   if (numericKeys.includes(clave)) {
+    if (!valor) return { error: 'El valor no puede estar vacío' }
     const n = Number(valor)
     if (isNaN(n) || n < 0) return { error: 'Debe ser un número mayor o igual a 0' }
     if (clave === 'descuento_maximo_porcentaje' && n > 100) {
@@ -457,6 +462,7 @@ export async function actualizarConfiguracion(formData: FormData) {
       return { error: 'El día debe estar entre 1 y 28' }
     }
   }
+  // Los campos de texto (datos de transferencia, etc.) sí pueden quedar vacíos.
 
   const { error } = await admin
     .from('configuracion')

@@ -4,6 +4,33 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { crearPreferenciaMP, crearSuscripcionMP } from '@/lib/mp'
 import { getPreciosConfig, montoMensual, cantidadFamiliaActiva } from '@/lib/precios'
 
+export type DatosTransferencia = {
+  alias: string
+  cbu: string
+  titular: string
+  banco: string
+  habilitado: boolean
+}
+
+/** Datos de la cuenta de la cooperadora para transferencia directa (sin MP). */
+export async function getDatosTransferencia(): Promise<DatosTransferencia> {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('configuracion')
+    .select('clave, valor')
+    .in('clave', ['transferencia_alias', 'transferencia_cbu', 'transferencia_titular', 'transferencia_banco'])
+  const m = new Map((data ?? []).map((r) => [r.clave, (r.valor ?? '').trim()]))
+  const alias = m.get('transferencia_alias') ?? ''
+  const cbu   = m.get('transferencia_cbu') ?? ''
+  return {
+    alias,
+    cbu,
+    titular: m.get('transferencia_titular') ?? '',
+    banco:   m.get('transferencia_banco') ?? '',
+    habilitado: !!(alias || cbu),
+  }
+}
+
 export type AlumnoParaAporte = {
   id: string
   nombre: string

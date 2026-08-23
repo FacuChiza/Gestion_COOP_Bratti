@@ -37,7 +37,10 @@
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"https://gestion-coop-bratti.vercel.app/pagar\" --max-time 20)",
       "Bash(curl -s \"https://gestion-coop-bratti.vercel.app/pagar\" --max-time 20)",
       "Bash(git branch *)",
-      "Bash(git tag *)"
+      "Bash(git tag *)",
+      "Bash(curl -s -o /dev/null -w \"/pagar : %{http_code}\\\\n\" \"https://gestion-coop-bratti.vercel.app/pagar\" --max-time 20)",
+      "Bash(curl -s -o /dev/null -w \"/admin/login : %{http_code}\\\\n\" \"https://gestion-coop-bratti.vercel.app/admin/login\" --max-time 20)",
+      "Bash(curl -s -o /dev/null -w \"cron/mensual sin auth: %{http_code}\\\\n\" \"https://gestion-coop-bratti.vercel.app/api/cron/mensual\" --max-time 20)"
     ]
   }
 }

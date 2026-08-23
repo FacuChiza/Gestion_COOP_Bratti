@@ -23,13 +23,15 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
   const [seleccionadas, setSeleccionadas] = useState<string[]>([])
   const [notas, setNotas]             = useState('')
   const [descuento, setDescuento]     = useState<string>('0')
-  const [metodo, setMetodo]           = useState<'efectivo' | 'transferencia' | 'mercadopago'>('efectivo')
+  const [comprobante, setComprobante] = useState('')
+  const [metodo, setMetodo]           = useState<'efectivo' | 'transferencia' | 'mercadopago' | 'modo' | 'otro'>('efectivo')
   const [isPending, startTransition]  = useTransition()
 
   useEffect(() => {
     if (open) {
       setNotas('')
       setDescuento('0')
+      setComprobante('')
       setMetodo('efectivo')
       getCuotasPendientesAlumno(alumno.id).then((data) => {
         setCuotas(data as Cuota[])
@@ -67,6 +69,7 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
     formData.set('notas', notas)
     formData.set('descuento', String(descNum))
     formData.set('metodo', metodo)
+    formData.set('comprobante', comprobante)
 
     startTransition(async () => {
       const result = await registrarPago(formData)
@@ -132,7 +135,9 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
               >
                 <option value="efectivo">Efectivo</option>
                 <option value="transferencia">Transferencia</option>
+                <option value="modo">MODO</option>
                 <option value="mercadopago">Mercado Pago</option>
+                <option value="otro">Otro</option>
               </select>
             </div>
             <div className="space-y-1">
@@ -147,6 +152,19 @@ export function PaymentFormDialog({ alumno, open, onClose }: Props) {
               />
             </div>
           </div>
+
+          {/* Comprobante / referencia (para transferencia, MODO, etc.) */}
+          {metodo !== 'efectivo' && (
+            <div className="space-y-1">
+              <Label htmlFor="comprobante" className="text-xs">N° de comprobante / operación (opcional)</Label>
+              <Input
+                id="comprobante"
+                value={comprobante}
+                onChange={(e) => setComprobante(e.target.value)}
+                placeholder="Ej: 00012345 o el ID de la transferencia"
+              />
+            </div>
+          )}
 
           {/* Notas */}
           <div className="space-y-1">

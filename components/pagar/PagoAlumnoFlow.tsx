@@ -1,15 +1,15 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Search, ArrowRight, CreditCard, GraduationCap, Loader2, ChevronLeft, Repeat } from 'lucide-react'
+import { Search, ArrowRight, CreditCard, GraduationCap, Loader2, ChevronLeft, Repeat, Building2, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { formatMonto } from '@/lib/utils'
-import { buscarAlumnoParaAporte, crearPagoMensualAlumno, crearPagoAnualAlumno, crearDebitoAlumno, type AlumnoParaAporte } from '@/app/pagar/actions'
+import { buscarAlumnoParaAporte, crearPagoMensualAlumno, crearPagoAnualAlumno, crearDebitoAlumno, type AlumnoParaAporte, type DatosTransferencia } from '@/app/pagar/actions'
 
-export function PagoAlumnoFlow() {
+export function PagoAlumnoFlow({ transferencia }: { transferencia: DatosTransferencia }) {
   const [term, setTerm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [resultados, setResultados] = useState<AlumnoParaAporte[] | null>(null)
@@ -19,6 +19,8 @@ export function PagoAlumnoFlow() {
   const [mostrarDebito, setMostrarDebito] = useState(false)
   const [debEmail, setDebEmail] = useState('')
   const [debTel, setDebTel] = useState('')
+  const [mostrarTransfer, setMostrarTransfer] = useState(false)
+  const [copiado, setCopiado] = useState<string | null>(null)
 
   const buscar = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -55,9 +57,18 @@ export function PagoAlumnoFlow() {
     })
   }
 
+  const copiar = async (valor: string, campo: string) => {
+    try {
+      await navigator.clipboard.writeText(valor)
+      setCopiado(campo)
+      setTimeout(() => setCopiado(null), 2000)
+    } catch {}
+  }
+
   const volver = () => {
     setElegido(null); setResultados(null)
     setMostrarDebito(false); setDebEmail(''); setDebTel('')
+    setMostrarTransfer(false)
   }
 
   // ── Card del alumno elegido → pagar ─────────────────────────
@@ -180,8 +191,44 @@ export function PagoAlumnoFlow() {
               <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">{error}</p>
             )}
 
+            {/* Transferencia directa (si la cooperadora la tiene configurada) */}
+            {transferencia.habilitado && (
+              <div className="pt-3 border-t border-slate-100">
+                {!mostrarTransfer ? (
+                  <button
+                    type="button"
+                    onClick={() => setMostrarTransfer(true)}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 hover:border-slate-300 py-2.5 text-sm font-medium text-slate-700 transition-colors"
+                  >
+                    <Building2 className="h-4 w-4" />
+                    Transferir a la cooperadora
+                  </button>
+                ) : (
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-2.5">
+                    <p className="text-sm font-semibold text-slate-900">Transferencia bancaria</p>
+                    <p className="text-xs text-slate-600">
+                      Transferí <strong>{formatMonto(elegido.montoMensual)}</strong> a esta cuenta. Guardá el
+                      comprobante — tu aporte se registra cuando la cooperadora lo recibe.
+                    </p>
+                    {transferencia.alias && (
+                      <DatoCopiable label="Alias" valor={transferencia.alias} campo="alias" copiado={copiado} onCopy={copiar} />
+                    )}
+                    {transferencia.cbu && (
+                      <DatoCopiable label="CBU/CVU" valor={transferencia.cbu} campo="cbu" copiado={copiado} onCopy={copiar} />
+                    )}
+                    {transferencia.titular && (
+                      <p className="text-xs text-slate-600"><span className="text-slate-400">Titular:</span> {transferencia.titular}</p>
+                    )}
+                    {transferencia.banco && (
+                      <p className="text-xs text-slate-600"><span className="text-slate-400">Banco:</span> {transferencia.banco}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <p className="text-center text-[11px] text-slate-400">
-              🔒 Vas al sitio seguro de Mercado Pago. Tu aporte es voluntario y agradecido.
+              Con Mercado Pago pagás con tarjeta de cualquier banco, dinero en cuenta o efectivo (Rapipago/Pago Fácil). Tu aporte es voluntario y agradecido. 🔒
             </p>
           </div>
         </div>
@@ -252,5 +299,35 @@ export function PagoAlumnoFlow() {
         )}
       </Button>
     </form>
+  )
+}
+
+function DatoCopiable({
+  label, valor, campo, copiado, onCopy,
+}: {
+  label: string
+  valor: string
+  campo: string
+  copiado: string | null
+  onCopy: (valor: string, campo: string) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-md bg-white border border-slate-200 px-3 py-2">
+      <div className="min-w-0">
+        <p className="text-[10px] text-slate-400 uppercase tracking-wide">{label}</p>
+        <p className="text-sm font-medium text-slate-900 break-all">{valor}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => onCopy(valor, campo)}
+        className="shrink-0 inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900"
+      >
+        {copiado === campo ? (
+          <><Check className="h-3.5 w-3.5 text-emerald-600" /> Copiado</>
+        ) : (
+          <><Copy className="h-3.5 w-3.5" /> Copiar</>
+        )}
+      </button>
+    </div>
   )
 }
