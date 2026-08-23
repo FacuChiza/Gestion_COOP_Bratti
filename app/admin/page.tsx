@@ -1,7 +1,8 @@
 import { LogOut } from 'lucide-react'
-import { getAlumnosConEstado, getAlumnosConDeuda, getPlanes, getConfiguracion } from './actions'
+import { getAlumnosConEstado, getAlumnosConDeuda, getPlanes, getConfiguracion, getResumenEconomico } from './actions'
 import { logoutAdminAction } from './login/actions'
 import { AdminTabs } from '@/components/admin/AdminTabs'
+import { ResumenEconomico } from '@/components/admin/ResumenEconomico'
 import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
 
@@ -12,11 +13,12 @@ export const metadata = {
 }
 
 export default async function AdminPage() {
-  const [alumnos, alumnosConDeuda, planes, configuracion] = await Promise.all([
+  const [alumnos, alumnosConDeuda, planes, configuracion, resumen] = await Promise.all([
     getAlumnosConEstado(),
     getAlumnosConDeuda(3),
     getPlanes(),
     getConfiguracion(),
+    getResumenEconomico(),
   ])
 
   const alumnosActivos    = alumnos.filter((a) => a.activo !== false)
@@ -85,6 +87,9 @@ export default async function AdminPage() {
             <StatBar label="Con 3+ aportes pendientes" value={alumnosConDeuda.length}  accent="text-red-600" />
           </div>
         </div>
+
+        {/* ── Resumen económico ────────────────────────────────────── */}
+        <ResumenEconomico data={resumen} />
 
         {/* ── Tabs principales del panel ───────────────────────────── */}
         <AdminTabs

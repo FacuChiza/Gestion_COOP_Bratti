@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { generarAportesMensuales } from '@/lib/cron-mensual'
 import { wspConfirmacionPago } from '@/lib/twilio'
 import { enviarRecibo } from '@/lib/email'
 import { formatMes } from '@/lib/utils'
@@ -357,70 +358,68 @@ export async function actualizarPrecio(formData: FormData) {
   return { success: true }
 }
 
-// ─── Simulación de cron mensual ───────────────────────────────────────────────
+// ─── Generación mensual de aportes (botón del admin) ─────────────────────────
+// Usa la misma lógica que el cron automático (lib/cron-mensual): genera una
+// cuota por alumno activo, con descuento por hermanos.
 
 export async function ejecutarCronMensual() {
+  const resultado = await generarAportesMensuales()
+  revalidatePath('/admin')
+  return { success: true, ...resultado }
+}
+
+// ─── Resumen económico para el dashboard ─────────────────────────────────────
+
+export type ResumenEconomico = {
+  recaudadoMes: number
+  recaudadoAnio: number
+  montoPendiente: number
+  cantPendientes: number
+  aportesPagadosMes: number
+  aportesPendientesMes: number
+  anio: number
+}
+
+export async function getResumenEconomico(): Promise<ResumenEconomico> {
   const admin = createAdminClient()
   const ahora = new Date()
-  const mesActual  = ahora.getMonth() + 1
-  const añoActual  = ahora.getFullYear()
+  const mes = ahora.getMonth() + 1
+  const anio = ahora.getFullYear()
+  const primerDiaMes  = `${anio}-${String(mes).padStart(2, '0')}-01`
+  const primerDiaAnio = `${anio}-01-01`
 
-  const fechaMesAnterior = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1)
-  const mesAnterior  = fechaMesAnterior.getMonth() + 1
-  const añoAnterior  = fechaMesAnterior.getFullYear()
+  // Recaudado real (pagos no anulados)
+  const { data: pagosMes } = await admin
+    .from('pagos').select('monto').eq('anulado', false).gte('fecha', primerDiaMes)
+  const recaudadoMes = (pagosMes ?? []).reduce((s, p) => s + (p.monto ?? 0), 0)
 
-  let cuotasGeneradas = 0
-  let cuotasVencidas  = 0
+  const { data: pagosAnio } = await admin
+    .from('pagos').select('monto').eq('anulado', false).gte('fecha', primerDiaAnio)
+  const recaudadoAnio = (pagosAnio ?? []).reduce((s, p) => s + (p.monto ?? 0), 0)
 
-  // 1. Marcar pendientes del mes anterior como vencidas
-  const { count: totalParaVencer } = await admin
-    .from('cuotas')
-    .select('*', { count: 'exact', head: true })
-    .eq('mes', mesAnterior)
-    .eq('año', añoAnterior)
-    .eq('estado', 'pendiente')
+  // Pendiente de cobro (todas las cuotas sin pagar)
+  const { data: pendientes } = await admin
+    .from('cuotas').select('monto').in('estado', ['pendiente', 'vencida'])
+  const montoPendiente = (pendientes ?? []).reduce((s, c) => s + (c.monto ?? 0), 0)
+  const cantPendientes = pendientes?.length ?? 0
 
-  cuotasVencidas = totalParaVencer ?? 0
+  // Aportes del mes: pagados vs pendientes
+  const { count: pagadasMes } = await admin
+    .from('cuotas').select('*', { count: 'exact', head: true })
+    .eq('mes', mes).eq('año', anio).eq('estado', 'pagada')
+  const { count: pendientesMes } = await admin
+    .from('cuotas').select('*', { count: 'exact', head: true })
+    .eq('mes', mes).eq('año', anio).in('estado', ['pendiente', 'vencida'])
 
-  await admin
-    .from('cuotas')
-    .update({ estado: 'vencida' })
-    .eq('mes', mesAnterior)
-    .eq('año', añoAnterior)
-    .eq('estado', 'pendiente')
-
-  // 2. Generar cuotas del mes actual para suscripciones activas
-  const { data: suscripciones } = await admin
-    .from('suscripciones')
-    .select('*, planes(*), alumnos(*)')
-    .eq('estado', 'activa')
-
-  if (suscripciones) {
-    for (const susc of suscripciones) {
-      const { data: existente } = await admin
-        .from('cuotas')
-        .select('id')
-        .eq('alumno_id', susc.alumno_id)
-        .eq('mes', mesActual)
-        .eq('año', añoActual)
-        .maybeSingle()
-
-      if (!existente && susc.planes) {
-        const { error } = await admin.from('cuotas').insert({
-          alumno_id:     susc.alumno_id,
-          suscripcion_id: susc.id,
-          mes:           mesActual,
-          año:           añoActual,
-          monto:         susc.planes.precio_por_mes,
-          estado:        'pendiente',
-        })
-        if (!error) cuotasGeneradas++
-      }
-    }
+  return {
+    recaudadoMes,
+    recaudadoAnio,
+    montoPendiente,
+    cantPendientes,
+    aportesPagadosMes: pagadasMes ?? 0,
+    aportesPendientesMes: pendientesMes ?? 0,
+    anio,
   }
-
-  revalidatePath('/admin')
-  return { success: true, cuotasGeneradas, cuotasVencidas }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
