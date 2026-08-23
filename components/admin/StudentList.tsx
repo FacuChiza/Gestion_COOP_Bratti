@@ -16,12 +16,13 @@ type Props = {
   planes?: Plan[]
 }
 
-const estadoBadge = (cuotaEstado: string | undefined | null, tieneSusc: boolean) => {
-  if (!tieneSusc) return <Badge variant="outline">Sin suscripción</Badge>
-  if (!cuotaEstado) return <Badge variant="secondary">Sin aporte</Badge>
-  if (cuotaEstado === 'pagada') return <Badge variant="success">Pagada</Badge>
-  if (cuotaEstado === 'vencida') return <Badge variant="danger">Vencida</Badge>
-  return <Badge variant="warning">Pendiente</Badge>
+// Estado del aporte del mes actual. En el modelo padrón el badge se basa
+// en la cuota del mes, no en si tiene suscripción.
+const estadoBadge = (cuotaEstado: string | undefined | null) => {
+  if (cuotaEstado === 'pagada')    return <Badge variant="success">Pagada</Badge>
+  if (cuotaEstado === 'vencida')   return <Badge variant="danger">Vencida</Badge>
+  if (cuotaEstado === 'pendiente') return <Badge variant="warning">Pendiente</Badge>
+  return <Badge variant="outline">Sin generar</Badge>
 }
 
 // Extraer cursos únicos de la lista
@@ -150,7 +151,7 @@ export function StudentList({ alumnos, planes = [] }: Props) {
                   {alumno.pagadores?.nombre ?? <span className="text-slate-400">—</span>}
                 </td>
                 <td className="px-4 py-3">
-                  {estadoBadge(alumno.cuota_actual?.estado, !!alumno.suscripcion_activa)}
+                  {estadoBadge(alumno.cuota_actual?.estado)}
                   {alumno.cuota_actual && (
                     <span className="ml-2 text-xs text-slate-400">
                       {formatMonto(alumno.cuota_actual.monto)}
@@ -260,7 +261,7 @@ export function StudentList({ alumnos, planes = [] }: Props) {
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-500">{formatMes(mesActual, añoActual)}</span>
               <div className="flex items-center gap-2">
-                {estadoBadge(alumno.cuota_actual?.estado, !!alumno.suscripcion_activa)}
+                {estadoBadge(alumno.cuota_actual?.estado)}
                 {alumno.cuota_actual && (
                   <span className="text-xs text-slate-400">{formatMonto(alumno.cuota_actual.monto)}</span>
                 )}

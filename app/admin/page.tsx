@@ -21,9 +21,7 @@ export default async function AdminPage() {
     getResumenEconomico(),
   ])
 
-  const alumnosActivos    = alumnos.filter((a) => a.activo !== false)
-  const aportesRealizados = alumnosActivos.filter((a) => a.cuota_actual?.estado === 'pagada').length
-  const aportesPendientes = alumnosActivos.filter((a) => a.cuota_actual?.estado === 'pendiente').length
+  const alumnosActivos = alumnos.filter((a) => a.activo !== false)
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -78,18 +76,12 @@ export default async function AdminPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-        {/* ── Stats compactas, en una franja horizontal ───────────── */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
-          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-slate-100">
-            <StatBar label="Alumnos activos"         value={alumnosActivos.length}     accent="text-slate-900" />
-            <StatBar label="Aportes este mes"        value={aportesRealizados}         accent="text-emerald-600" />
-            <StatBar label="Aportes pendientes"      value={aportesPendientes}         accent="text-amber-600" />
-            <StatBar label="Con 3+ aportes pendientes" value={alumnosConDeuda.length}  accent="text-red-600" />
-          </div>
-        </div>
-
-        {/* ── Resumen económico ────────────────────────────────────── */}
-        <ResumenEconomico data={resumen} />
+        {/* ── Resumen unificado (dinero + este mes) ────────────────── */}
+        <ResumenEconomico
+          data={resumen}
+          alumnosActivos={alumnosActivos.length}
+          conDeuda={alumnosConDeuda.length}
+        />
 
         {/* ── Tabs principales del panel ───────────────────────────── */}
         <AdminTabs
@@ -99,15 +91,6 @@ export default async function AdminPage() {
           configuracion={configuracion}
         />
       </div>
-    </div>
-  )
-}
-
-function StatBar({ label, value, accent }: { label: string; value: number; accent: string }) {
-  return (
-    <div className="px-3 py-2 sm:px-4 sm:py-3 flex flex-col items-start gap-0 sm:gap-0.5 transition-colors hover:bg-slate-50">
-      <span className="text-[10px] sm:text-xs text-slate-500 leading-tight">{label}</span>
-      <span className={`text-lg sm:text-2xl font-bold tabular-nums ${accent}`}>{value}</span>
     </div>
   )
 }
