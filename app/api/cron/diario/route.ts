@@ -31,8 +31,10 @@ const UMBRAL_FALLBACK = 3
 const DIAS_ENTRE_RECORDATORIOS = 30
 
 function autenticado(req: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET
+  if (!secret) return false // sin secreto configurado, no se permite ejecutar
   const token = req.headers.get('authorization')?.replace('Bearer ', '')
-  return token === process.env.CRON_SECRET
+  return token === secret
 }
 
 function diasEntre(a: Date, b: Date): number {

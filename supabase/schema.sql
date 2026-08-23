@@ -17,7 +17,7 @@ create table if not exists pagadores (
   nombre                text not null,
   dni                   text,
   telefono              text,
-  mail                  text unique not null,
+  mail                  text unique,                -- opcional (aportantes sin login)
   notas                 text,                       -- gestión interna del directivo
   ultimo_aviso_mensual  date,                       -- anti-spam recordatorio (cron diario)
   ultimo_aviso_deuda    date,                       -- anti-spam alerta morosidad (cron diario)

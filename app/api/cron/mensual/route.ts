@@ -15,8 +15,10 @@ import { generarAportesMensuales } from '@/lib/cron-mensual'
 export const dynamic = 'force-dynamic'
 
 function autenticado(req: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET
+  if (!secret) return false // sin secreto configurado, no se permite ejecutar
   const token = req.headers.get('authorization')?.replace('Bearer ', '')
-  return token === process.env.CRON_SECRET
+  return token === secret
 }
 
 export async function GET(req: NextRequest) {

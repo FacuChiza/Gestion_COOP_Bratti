@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { altaPagadorYAlumno } from '@/app/admin/actions'
 import type { Plan } from '@/types'
 
@@ -19,7 +18,7 @@ type Props = {
 const GRADOS = ['1°', '2°', '3°', '4°', '5°', '6°', '7°']
 const TURNOS = ['Mañana', 'Noche']
 
-export function AddPagadorDialog({ open, onClose, planes }: Props) {
+export function AddPagadorDialog({ open, onClose }: Props) {
   const formRef = useRef<HTMLFormElement>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -32,7 +31,7 @@ export function AddPagadorDialog({ open, onClose, planes }: Props) {
       if (result?.error) {
         toast.error(result.error)
       } else {
-        toast.success('Aportante y alumno dados de alta correctamente')
+        toast.success('Alumno agregado correctamente')
         formRef.current?.reset()
         onClose()
       }
@@ -41,93 +40,80 @@ export function AddPagadorDialog({ open, onClose, planes }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Agregar aportante y alumno</DialogTitle>
+          <DialogTitle>Agregar alumno</DialogTitle>
           <DialogDescription>
-            Cargá los datos del aportante (adulto responsable) y del alumno.
+            El alumno queda activo y genera su aporte mensual automáticamente. Los datos del
+            aportante son opcionales (para contacto y recibos).
           </DialogDescription>
         </DialogHeader>
 
         <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
-          {/* Sección aportante */}
-          <div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b border-slate-100">
-              Datos del aportante
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="col-span-2 space-y-1">
-                <Label htmlFor="nombre">Nombre completo *</Label>
-                <Input id="nombre" name="nombre" required placeholder="Ana García" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="dni">DNI</Label>
-                <Input id="dni" name="dni" placeholder="12345678" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="telefono">Teléfono</Label>
-                <Input id="telefono" name="telefono" placeholder="11 1234-5678" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="mail">Email *</Label>
-                <Input id="mail" name="mail" type="email" required placeholder="ana@mail.com" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="password">Contraseña portal *</Label>
-                <Input id="password" name="password" type="password" required minLength={6} placeholder="Mín. 6 caracteres" />
-              </div>
-            </div>
-          </div>
-
           {/* Sección alumno */}
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b border-slate-100">
               Datos del alumno
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="col-span-2 space-y-1">
+              <div className="col-span-1 sm:col-span-2 space-y-1">
                 <Label htmlFor="nombre_alumno">Nombre del alumno *</Label>
                 <Input id="nombre_alumno" name="nombre_alumno" required placeholder="Martín García" />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="grado">Grado *</Label>
+                <Label htmlFor="dni_alumno">DNI del alumno</Label>
+                <Input id="dni_alumno" name="dni_alumno" inputMode="numeric" placeholder="45123456" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="grado">Grado / Curso *</Label>
                 <select
+                  id="grado"
                   name="grado"
                   required
                   className="flex h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                 >
                   <option value="">Seleccionar</option>
-                  {GRADOS.map((g) => (
-                    <option key={g} value={g}>{g} grado</option>
-                  ))}
+                  {GRADOS.map((g) => <option key={g} value={g}>{g}</option>)}
                 </select>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 sm:col-span-2">
                 <Label htmlFor="turno">Turno</Label>
                 <select
+                  id="turno"
                   name="turno"
                   className="flex h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                 >
                   <option value="">Sin especificar</option>
-                  {TURNOS.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
+                  {TURNOS.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
-              <div className="col-span-2 space-y-1">
-                <Label htmlFor="plan_id">Plan de aportes *</Label>
-                <select
-                  name="plan_id"
-                  required
-                  className="flex h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                >
-                  <option value="">Seleccionar plan</option>
-                  {planes.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre} — ${p.precio_por_mes}/mes (total ${p.monto_total})
-                    </option>
-                  ))}
-                </select>
+            </div>
+          </div>
+
+          {/* Sección aportante (opcional) */}
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700 mb-1 pb-1 border-b border-slate-100">
+              Aportante <span className="font-normal text-slate-400">· opcional</span>
+            </h3>
+            <p className="text-xs text-slate-500 mb-3">
+              Adulto responsable. Si no lo cargás ahora, se vincula solo cuando realice el primer aporte.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="col-span-1 sm:col-span-2 space-y-1">
+                <Label htmlFor="nombre">Nombre y apellido</Label>
+                <Input id="nombre" name="nombre" placeholder="Ana García" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="dni">DNI</Label>
+                <Input id="dni" name="dni" inputMode="numeric" placeholder="20123456" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="telefono">WhatsApp (10 dígitos)</Label>
+                <Input id="telefono" name="telefono" inputMode="numeric" placeholder="1122334455" />
+              </div>
+              <div className="col-span-1 sm:col-span-2 space-y-1">
+                <Label htmlFor="mail">Email (para recibos)</Label>
+                <Input id="mail" name="mail" type="email" placeholder="ana@mail.com" />
               </div>
             </div>
           </div>
@@ -137,7 +123,7 @@ export function AddPagadorDialog({ open, onClose, planes }: Props) {
               Cancelar
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? 'Guardando...' : 'Dar de alta'}
+              {isPending ? 'Guardando...' : 'Agregar alumno'}
             </Button>
           </div>
         </form>

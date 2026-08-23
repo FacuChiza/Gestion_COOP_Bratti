@@ -246,76 +246,78 @@ export async function registrarPago(formData: FormData) {
   return { success: true, pagoId: pago.id }
 }
 
-// ─── Alta pagador + alumno ────────────────────────────────────────────────────
+// ─── Alta manual de alumno (+ aportante opcional) ─────────────────────────────
+// Modelo padrón: el alumno es lo central. El aportante (adulto responsable)
+// es opcional y sin login — sirve para el contacto/recibo. Los aportes
+// mensuales se generan solos por el cron; no hace falta plan ni suscripción.
 
 export async function altaPagadorYAlumno(formData: FormData) {
   const admin = createAdminClient()
 
-  const nombre       = formData.get('nombre')       as string
-  const dni          = formData.get('dni')           as string
-  const telefono     = formData.get('telefono')      as string
-  const mail         = formData.get('mail')          as string
-  const password     = formData.get('password')      as string
-  const nombreAlumno = formData.get('nombre_alumno') as string
-  const grado        = formData.get('grado')         as string
-  const turno        = formData.get('turno')         as string
-  const planId       = formData.get('plan_id')       as string
+  // Datos del alumno (obligatorios: nombre y grado)
+  const nombreAlumno = (formData.get('nombre_alumno') as string ?? '').trim()
+  const dniAlumnoRaw = (formData.get('dni_alumno')    as string ?? '').trim()
+  const dniAlumno    = dniAlumnoRaw.replace(/\D/g, '') || null
+  const grado        = (formData.get('grado')         as string ?? '').trim()
+  const turno        = (formData.get('turno')         as string ?? '').trim() || null
 
-  if (!nombre || !mail || !password || !nombreAlumno || !grado || !planId) {
-    return { error: 'Completá todos los campos obligatorios' }
+  // Datos del aportante (todos opcionales; con al menos el nombre lo creamos)
+  const nombre   = (formData.get('nombre')   as string ?? '').trim()
+  const dni      = (formData.get('dni')      as string ?? '').trim().replace(/\D/g, '') || null
+  const telDig   = (formData.get('telefono') as string ?? '').replace(/\D/g, '')
+  const telefono = telDig.length === 10 ? `+549${telDig}` : (telDig ? telDig : null)
+  const mail     = (formData.get('mail')     as string ?? '').trim().toLowerCase() || null
+
+  if (!nombreAlumno || !grado) {
+    return { error: 'El nombre y el grado del alumno son obligatorios.' }
   }
 
-  // Crear usuario en Supabase Auth
-  const { data: authUser, error: authError } = await admin.auth.admin.createUser({
-    email: mail,
-    password,
-    email_confirm: true,
-  })
+  // DNI de alumno único (evita duplicados con el padrón)
+  if (dniAlumno) {
+    const { data: yaExiste } = await admin
+      .from('alumnos').select('id').eq('dni', dniAlumno).maybeSingle()
+    if (yaExiste) return { error: 'Ya existe un alumno con ese DNI.' }
+  }
 
-  if (authError) {
-    const msg = authError.message.toLowerCase()
-    if (msg.includes('already') || msg.includes('exist') || msg.includes('registered')) {
-      return { error: 'Ya existe un usuario con ese email' }
+  // Crear/vincular aportante solo si se cargó al menos el nombre
+  let pagadorId: string | null = null
+  if (nombre) {
+    // Si hay mail y ya existe un aportante con ese mail, lo reutilizamos
+    if (mail) {
+      const { data: existente } = await admin
+        .from('pagadores').select('id').eq('mail', mail).maybeSingle()
+      if (existente) pagadorId = existente.id
     }
-    return { error: `Error al crear usuario: ${authError.message}` }
-  }
-
-  // Crear pagador
-  const { data: pagador, error: errorPagador } = await admin
-    .from('pagadores')
-    .insert({ nombre, dni: dni || null, telefono: telefono || null, mail })
-    .select()
-    .single()
-
-  if (errorPagador || !pagador) {
-    await admin.auth.admin.deleteUser(authUser.user.id)
-    return { error: 'Error al crear el aportante' }
+    if (!pagadorId) {
+      const { data: nuevo, error: errPag } = await admin
+        .from('pagadores')
+        .insert({ nombre, dni, telefono, mail })
+        .select('id').single()
+      if (errPag || !nuevo) {
+        console.error('[altaAlumno] pagador:', errPag)
+        return { error: 'Error al crear el aportante.' }
+      }
+      pagadorId = nuevo.id
+    }
   }
 
   // Crear alumno
-  const { data: alumno, error: errorAlumno } = await admin
+  const { error: errAlumno } = await admin
     .from('alumnos')
-    .insert({ nombre: nombreAlumno, grado, turno: turno || null, pagador_id: pagador.id, activo: true })
-    .select()
-    .single()
+    .insert({
+      nombre: nombreAlumno,
+      dni: dniAlumno,
+      grado,
+      turno,
+      pagador_id: pagadorId,
+      activo: true,
+      estado: 'activo',
+      ciclo_lectivo: new Date().getFullYear(),
+    })
 
-  if (errorAlumno || !alumno) {
-    return { error: 'Error al crear el alumno' }
-  }
-
-  // Crear suscripción (alta admin → siempre manual/efectivo)
-  const { error: errorSusc } = await admin.from('suscripciones').insert({
-    alumno_id:    alumno.id,
-    plan_id:      planId,
-    fecha_inicio: new Date().toISOString().split('T')[0],
-    estado:       'activa',
-    metodo_pago:  'efectivo',
-    tipo_pago:    'manual',
-    mp_status:    'activa',
-  })
-
-  if (errorSusc) {
-    return { error: 'Error al crear la suscripción' }
+  if (errAlumno) {
+    console.error('[altaAlumno] alumno:', errAlumno)
+    return { error: 'Error al crear el alumno.' }
   }
 
   revalidatePath('/admin')
@@ -531,33 +533,16 @@ export async function editarPagador(formData: FormData) {
   const nombre    = (formData.get('nombre')   as string ?? '').trim()
   const dni       = (formData.get('dni')      as string ?? '').trim() || null
   const telefono  = (formData.get('telefono') as string ?? '').trim() || null
-  const mail      = (formData.get('mail')     as string ?? '').trim().toLowerCase()
+  const mail      = (formData.get('mail')     as string ?? '').trim().toLowerCase() || null
   const notas     = (formData.get('notas')    as string ?? '').trim() || null
 
-  if (!pagadorId || !nombre || !mail) {
-    return { error: 'Nombre y mail son obligatorios' }
+  if (!pagadorId || !nombre) {
+    return { error: 'El nombre del aportante es obligatorio' }
   }
 
-  // Si cambia el mail, también lo actualizamos en Supabase Auth para que
-  // RLS siga funcionando (las políticas matchean por auth.email()).
-  const { data: pagadorActual } = await admin
-    .from('pagadores')
-    .select('mail')
-    .eq('id', pagadorId)
-    .single()
-
-  if (pagadorActual && pagadorActual.mail !== mail) {
-    // Buscar el user de auth por el mail viejo
-    const { data: usuarios } = await admin.auth.admin.listUsers()
-    const user = usuarios?.users.find((u) => u.email === pagadorActual.mail)
-    if (user) {
-      const { error: errAuth } = await admin.auth.admin.updateUserById(user.id, { email: mail })
-      if (errAuth) {
-        return { error: `No se pudo actualizar el email de la cuenta: ${errAuth.message}` }
-      }
-    }
-  }
-
+  // Nota: en el modelo nuevo los aportantes no tienen login (el acceso es
+  // por /pagar con el DNI del alumno), así que no hay que sincronizar el
+  // email con Supabase Auth. Solo actualizamos la fila del aportante.
   const { error } = await admin
     .from('pagadores')
     .update({ nombre, dni, telefono, mail, notas })

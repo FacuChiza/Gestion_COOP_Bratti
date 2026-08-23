@@ -56,6 +56,13 @@ export async function POST(req: NextRequest) {
       const pago = await mpRes.json()
       if (pago.status !== 'approved') return NextResponse.json({ ok: true })
 
+      // Idempotencia: MP reintenta las notificaciones. Si ya registramos un
+      // pago con este payment id, no lo procesamos de nuevo (evita duplicar
+      // el aporte y contar la plata dos veces).
+      const { data: yaRegistrado } = await supabase
+        .from('pagos').select('id').eq('referencia_externa', String(paymentId)).maybeSingle()
+      if (yaRegistrado) return NextResponse.json({ ok: true, duplicate: true })
+
       const colonIdx  = (pago.external_reference ?? '').indexOf(':')
       const tipo      = colonIdx >= 0 ? pago.external_reference.slice(0, colonIdx) : ''
       const referencia = colonIdx >= 0 ? pago.external_reference.slice(colonIdx + 1) : ''
@@ -455,9 +462,15 @@ export async function POST(req: NextRequest) {
           const alumno = suscripcion.alumnos as AlumnoSusc | null
           const monto  = suscripcion.planes?.precio_por_mes ?? 0
 
+          const refDebito = `DB-${preapprovalId}-${año}${String(mesNum).padStart(2, '0')}`
+
+          // Idempotencia: si ya registramos el débito de este mes, no duplicar.
+          const { data: yaDebitado } = await supabase
+            .from('pagos').select('id').eq('referencia_externa', refDebito).maybeSingle()
+          if (yaDebitado) return NextResponse.json({ ok: true, duplicate: true })
+
           if (alumno?.pagadores) {
             // Registrar el pago automático en la tabla pagos
-            // (antes no se hacía → quedaba sin trazabilidad contable)
             const { data: pagoCreado } = await supabase
               .from('pagos')
               .insert({
@@ -466,7 +479,7 @@ export async function POST(req: NextRequest) {
                 descuento: 0,
                 fecha: ahora.toISOString().split('T')[0],
                 metodo: 'mercadopago',
-                referencia_externa: `DB-${preapprovalId}-${año}${String(mesNum).padStart(2, '0')}`,
+                referencia_externa: refDebito,
                 registrado_por: 'webhook_mp',
                 notas: 'Débito automático MP',
               })
@@ -499,7 +512,7 @@ export async function POST(req: NextRequest) {
               cuotas: [{ mes: formatMes(mesNum, año), monto }],
               montoTotal: monto,
               metodoPago: 'mercadopago',
-              nroRecibo: `DB-${preapprovalId}-${año}${String(mesNum).padStart(2, '0')}`,
+              nroRecibo: refDebito,
               pagadorId: alumno.pagadores.id,
             })
           }
