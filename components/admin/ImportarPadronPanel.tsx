@@ -39,6 +39,7 @@ export function ImportarPadronPanel() {
   const [filas, setFilas] = useState<FilaPadron[] | null>(null)
   const [nombreArchivo, setNombreArchivo] = useState('')
   const [errorParse, setErrorParse] = useState<string | null>(null)
+  const [cierre, setCierre] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,14 +70,19 @@ export function ImportarPadronPanel() {
 
   const importar = () => {
     if (!filas) return
+    if (cierre && !confirm(
+      'MODO CIERRE DE CICLO\n\nSe darán de BAJA todos los alumnos activos que NO figuren en este archivo ' +
+      '(egresados, que se fueron o cambiaron de escuela). Su historial se conserva.\n\n¿Continuar?'
+    )) return
     startTransition(async () => {
-      const r = await importarPadron(filas)
+      const r = await importarPadron(filas, cierre)
       toast.success(
         `Importado: ${r.creados} nuevos, ${r.actualizados} actualizados` +
         (r.omitidos ? `, ${r.omitidos} duplicados omitidos` : '') +
+        (r.dadosDeBaja ? `, ${r.dadosDeBaja} dados de baja` : '') +
         (r.errores ? `, ${r.errores} con error` : ''),
       )
-      setFilas(null); setNombreArchivo('')
+      setFilas(null); setNombreArchivo(''); setCierre(false)
     })
   }
 
@@ -144,8 +150,24 @@ export function ImportarPadronPanel() {
             )}
           </div>
 
+          {/* Modo cierre de ciclo */}
+          <label className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={cierre}
+              onChange={(e) => setCierre(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 mt-0.5"
+            />
+            <span className="text-xs text-amber-800">
+              <strong>Modo cierre de ciclo.</strong> Dar de baja a los alumnos activos que NO figuren en
+              este archivo (egresados, que se fueron o se cambiaron). Usalo solo cuando subís el
+              <strong> padrón completo del año</strong>. Su historial se conserva; para un alta puntual
+              a mitad de año, dejalo destildado.
+            </span>
+          </label>
+
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => { setFilas(null); setNombreArchivo('') }} disabled={isPending}>
+            <Button variant="outline" onClick={() => { setFilas(null); setNombreArchivo(''); setCierre(false) }} disabled={isPending}>
               Cancelar
             </Button>
             <Button onClick={importar} disabled={isPending} className="gap-2">

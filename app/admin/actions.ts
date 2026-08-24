@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generarAportesMensuales } from '@/lib/cron-mensual'
+import { cancelarSuscripcionMP } from '@/lib/mp'
 import { wspConfirmacionPago } from '@/lib/twilio'
 import { enviarRecibo } from '@/lib/email'
 import { formatMes } from '@/lib/utils'
@@ -337,13 +338,23 @@ export type ResultadoImport = {
   actualizados: number
   omitidos: number
   errores: number
+  dadosDeBaja: number
   total: number
 }
 
-export async function importarPadron(filas: FilaPadron[]): Promise<ResultadoImport> {
+/**
+ * @param cierreDeCiclo  Si es true, además de cargar/actualizar, da de baja
+ *   (activo=false, estado='baja') a los alumnos activos cuyo DNI NO figura en
+ *   el archivo — es decir, los que se fueron/egresaron. Cancela también su
+ *   débito automático en MP. Usar SOLO con el padrón completo del año.
+ */
+export async function importarPadron(
+  filas: FilaPadron[],
+  cierreDeCiclo = false,
+): Promise<ResultadoImport> {
   const admin = createAdminClient()
   const anio = new Date().getFullYear()
-  const vacio: ResultadoImport = { creados: 0, actualizados: 0, omitidos: 0, errores: 0, total: 0 }
+  const vacio: ResultadoImport = { creados: 0, actualizados: 0, omitidos: 0, errores: 0, dadosDeBaja: 0, total: 0 }
 
   if (!Array.isArray(filas) || filas.length === 0) return vacio
   // Tope de seguridad
@@ -403,8 +414,46 @@ export async function importarPadron(filas: FilaPadron[]): Promise<ResultadoImpo
     else creados += lote.length
   }
 
+  // ── Modo Cierre de ciclo: dar de baja a los ausentes ─────────
+  let dadosDeBaja = 0
+  if (cierreDeCiclo) {
+    const dnisArchivo = new Set(norm.map((r) => r.dni).filter(Boolean))
+    // Alumnos activos con DNI que NO están en el archivo → se fueron/egresaron
+    const { data: activos } = await admin
+      .from('alumnos')
+      .select('id, dni')
+      .eq('activo', true)
+    const ausentes = (activos ?? []).filter((a) => a.dni && !dnisArchivo.has(a.dni))
+    const ausentesIds = ausentes.map((a) => a.id)
+
+    if (ausentesIds.length > 0) {
+      // Cancelar débitos automáticos activos de los ausentes (para no seguir cobrando)
+      const { data: subs } = await admin
+        .from('suscripciones')
+        .select('id, mp_preapproval_id, tipo_pago')
+        .in('alumno_id', ausentesIds)
+        .in('estado', ['activa', 'pendiente'])
+      for (const s of subs ?? []) {
+        if (s.tipo_pago === 'suscripcion' && s.mp_preapproval_id) {
+          await cancelarSuscripcionMP(s.mp_preapproval_id)
+        }
+      }
+      await admin.from('suscripciones').update({ estado: 'cancelada' }).in('alumno_id', ausentesIds).in('estado', ['activa', 'pendiente'])
+
+      // Dar de baja a los alumnos ausentes (en lotes)
+      for (let i = 0; i < ausentesIds.length; i += 200) {
+        const lote = ausentesIds.slice(i, i + 200)
+        const { error } = await admin
+          .from('alumnos')
+          .update({ activo: false, estado: 'baja' })
+          .in('id', lote)
+        if (!error) dadosDeBaja += lote.length
+      }
+    }
+  }
+
   revalidatePath('/admin')
-  return { creados, actualizados, omitidos, errores, total: norm.length }
+  return { creados, actualizados, omitidos, errores, dadosDeBaja, total: norm.length }
 }
 
 // ─── Actualizar precio de un plan ────────────────────────────────────────────
@@ -504,6 +553,90 @@ export async function getResumenEconomico(): Promise<ResumenEconomico> {
     aportesPagadosMes: pagadasMes ?? 0,
     aportesPendientesMes: pendientesMes ?? 0,
     anio,
+  }
+}
+
+// ─── Reporte anual (para el PDF imprimible) ──────────────────────────────────
+
+export type ReporteAnual = {
+  anio: number
+  generado: string
+  alumnosActivos: number
+  aportantes: number
+  recaudadoAnio: number
+  recaudadoMes: number
+  montoPendiente: number
+  cantPendientes: number
+  alDiaMes: number
+  totalMes: number
+  porMes: { mes: number; pagadas: number; recaudado: number }[]
+  porMetodo: { metodo: string; total: number; cantidad: number }[]
+}
+
+export async function getReporteAnual(): Promise<ReporteAnual> {
+  const admin = createAdminClient()
+  const ahora = new Date()
+  const anio = ahora.getFullYear()
+  const mesActual = ahora.getMonth() + 1
+  const primerDiaAnio = `${anio}-01-01`
+
+  const [{ count: alumnosActivos }, { count: aportantes }] = await Promise.all([
+    admin.from('alumnos').select('*', { count: 'exact', head: true }).eq('activo', true),
+    admin.from('pagadores').select('*', { count: 'exact', head: true }),
+  ])
+
+  // Pagos del año (no anulados)
+  const { data: pagos } = await admin
+    .from('pagos').select('monto, fecha, metodo').eq('anulado', false).gte('fecha', primerDiaAnio)
+
+  const porMesMonto = new Array(12).fill(0)
+  const porMetodoMap = new Map<string, { total: number; cantidad: number }>()
+  let recaudadoAnio = 0, recaudadoMes = 0
+  for (const p of pagos ?? []) {
+    const m = parseInt(String(p.fecha).slice(5, 7), 10)
+    const monto = p.monto ?? 0
+    recaudadoAnio += monto
+    if (m === mesActual) recaudadoMes += monto
+    if (m >= 1 && m <= 12) porMesMonto[m - 1] += monto
+    const met = p.metodo || 'otro'
+    const cur = porMetodoMap.get(met) ?? { total: 0, cantidad: 0 }
+    cur.total += monto; cur.cantidad += 1
+    porMetodoMap.set(met, cur)
+  }
+
+  // Cuotas del año
+  const { data: cuotas } = await admin
+    .from('cuotas').select('mes, estado').eq('año', anio)
+  const pagadasPorMes = new Array(12).fill(0)
+  let alDiaMes = 0, totalMes = 0
+  for (const c of cuotas ?? []) {
+    if (c.estado === 'pagada' && c.mes >= 1 && c.mes <= 12) pagadasPorMes[c.mes - 1] += 1
+    if (c.mes === mesActual) {
+      totalMes += 1
+      if (c.estado === 'pagada') alDiaMes += 1
+    }
+  }
+
+  // Pendiente total (todas las cuotas sin pagar)
+  const { data: pend } = await admin
+    .from('cuotas').select('monto').in('estado', ['pendiente', 'vencida'])
+  const montoPendiente = (pend ?? []).reduce((s, c) => s + (c.monto ?? 0), 0)
+  const cantPendientes = pend?.length ?? 0
+
+  const porMes = Array.from({ length: 12 }, (_, i) => ({
+    mes: i + 1, pagadas: pagadasPorMes[i], recaudado: porMesMonto[i],
+  }))
+  const porMetodo = Array.from(porMetodoMap.entries())
+    .map(([metodo, v]) => ({ metodo, total: v.total, cantidad: v.cantidad }))
+    .sort((a, b) => b.total - a.total)
+
+  return {
+    anio,
+    generado: ahora.toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' }),
+    alumnosActivos: alumnosActivos ?? 0,
+    aportantes: aportantes ?? 0,
+    recaudadoAnio, recaudadoMes, montoPendiente, cantPendientes,
+    alDiaMes, totalMes, porMes, porMetodo,
   }
 }
 

@@ -1,4 +1,4 @@
-import { LogOut } from 'lucide-react'
+import { LogOut, FileText } from 'lucide-react'
 import { getAlumnosConEstado, getAlumnosConDeuda, getPlanes, getConfiguracion, getResumenEconomico } from './actions'
 import { logoutAdminAction } from './login/actions'
 import { AdminTabs } from '@/components/admin/AdminTabs'
@@ -57,6 +57,18 @@ export default async function AdminPage() {
                   year: 'numeric',
                 })}
               </div>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                title="Reporte anual en PDF"
+              >
+                <a href="/admin/reporte">
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Reporte PDF</span>
+                </a>
+              </Button>
               <form action={logoutAdminAction}>
                 <Button
                   type="submit"

@@ -225,6 +225,25 @@ export async function crearPreferenciaMP(params: {
   }
 }
 
+// ── Cancelar suscripción / débito automático ─────────────────────────────────
+
+export async function cancelarSuscripcionMP(preapprovalId: string): Promise<boolean> {
+  if (!preapprovalId) return false
+  const token = process.env.MP_SUBSCRIPTION_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN
+  try {
+    const res = await fetch(`${BASE_URL}/preapproval/${preapprovalId}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'cancelled' }),
+    })
+    if (!res.ok) console.error('[cancelarSuscripcionMP]', preapprovalId, res.status)
+    return res.ok
+  } catch (err) {
+    console.error('[cancelarSuscripcionMP] excepción:', err)
+    return false
+  }
+}
+
 // ── Validar webhook de MP ─────────────────────────────────────────────────────
 
 export function validarWebhookMP(
