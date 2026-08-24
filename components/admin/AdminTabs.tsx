@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Users, UserPlus, Bell, Calendar, Settings, Database, Sliders, Receipt, QrCode } from 'lucide-react'
+import { Users, UserPlus, Bell, Calendar, Settings, Database, Sliders, Receipt, QrCode, Upload } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { StudentList } from './StudentList'
@@ -13,6 +13,7 @@ import { DataExportPanel } from './DataExportPanel'
 import { ConfiguracionPanel } from './ConfiguracionPanel'
 import { PagosHistoryPanel } from './PagosHistoryPanel'
 import { QrPanel } from './QrPanel'
+import { ImportarPadronPanel } from './ImportarPadronPanel'
 import type { AlumnoConEstado, Plan, ConfiguracionItem } from '@/types'
 
 type AlumnoDeuda = {
@@ -62,6 +63,10 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: P
                 <Calendar className="h-4 w-4 shrink-0" />
                 <span className="hidden sm:inline">Cron</span>
               </TabsTrigger>
+              <TabsTrigger value="padron" className="gap-2 px-3 sm:px-4 h-10 sm:h-11">
+                <Upload className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Padrón</span>
+              </TabsTrigger>
               <TabsTrigger value="datos" className="gap-2 px-3 sm:px-4 h-10 sm:h-11">
                 <Database className="h-4 w-4 shrink-0" />
                 <span className="hidden sm:inline">Datos</span>
@@ -106,6 +111,10 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: P
 
         <TabsContent value="cron">
           <CronButton />
+        </TabsContent>
+
+        <TabsContent value="padron">
+          <ImportarPadronPanel />
         </TabsContent>
 
         <TabsContent value="datos">

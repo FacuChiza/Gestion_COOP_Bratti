@@ -329,6 +329,84 @@ export async function altaPagadorYAlumno(formData: FormData) {
   return { success: true }
 }
 
+// ─── Importar padrón (CSV: nombre, dni, curso) ───────────────────────────────
+
+export type FilaPadron = { nombre: string; dni: string; curso: string }
+export type ResultadoImport = {
+  creados: number
+  actualizados: number
+  omitidos: number
+  errores: number
+  total: number
+}
+
+export async function importarPadron(filas: FilaPadron[]): Promise<ResultadoImport> {
+  const admin = createAdminClient()
+  const anio = new Date().getFullYear()
+  const vacio: ResultadoImport = { creados: 0, actualizados: 0, omitidos: 0, errores: 0, total: 0 }
+
+  if (!Array.isArray(filas) || filas.length === 0) return vacio
+  // Tope de seguridad
+  const recorte = filas.slice(0, 3000)
+
+  // Normalizar cada fila: derivar turno y grado desde el curso
+  const norm = recorte
+    .map((f) => {
+      const nombre = (f.nombre ?? '').trim()
+      const dni = (f.dni ?? '').replace(/\D/g, '')
+      const cursoRaw = (f.curso ?? '').trim()
+      const esAdulto = /adulto/i.test(cursoRaw)
+      const grado = cursoRaw.replace(/^adultos\s*/i, '').trim() || cursoRaw
+      const turno = esAdulto ? 'Noche' : 'Mañana'
+      return { nombre, dni, grado, turno }
+    })
+    .filter((r) => r.nombre.length >= 2)
+
+  // Alumnos existentes por DNI (para actualizar en vez de duplicar)
+  const { data: existentes } = await admin.from('alumnos').select('id, dni')
+  const porDni = new Map<string, string>()
+  for (const a of existentes ?? []) if (a.dni) porDni.set(a.dni, a.id)
+
+  let creados = 0, actualizados = 0, omitidos = 0, errores = 0
+  const vistos = new Set<string>()
+  const nuevos: Array<Record<string, unknown>> = []
+
+  for (const r of norm) {
+    // Dedupe dentro del mismo archivo
+    if (r.dni && vistos.has(r.dni)) { omitidos++; continue }
+    if (r.dni) vistos.add(r.dni)
+
+    if (r.dni && porDni.has(r.dni)) {
+      const { error } = await admin
+        .from('alumnos')
+        .update({ nombre: r.nombre, grado: r.grado, turno: r.turno, activo: true, estado: 'activo', ciclo_lectivo: anio })
+        .eq('id', porDni.get(r.dni)!)
+      if (error) errores++; else actualizados++
+    } else {
+      nuevos.push({
+        nombre: r.nombre,
+        dni: r.dni || null,
+        grado: r.grado,
+        turno: r.turno,
+        activo: true,
+        estado: 'activo',
+        ciclo_lectivo: anio,
+      })
+    }
+  }
+
+  // Insertar nuevos en lotes
+  for (let i = 0; i < nuevos.length; i += 200) {
+    const lote = nuevos.slice(i, i + 200)
+    const { error } = await admin.from('alumnos').insert(lote)
+    if (error) { console.error('[importarPadron] insert lote:', error); errores += lote.length }
+    else creados += lote.length
+  }
+
+  revalidatePath('/admin')
+  return { creados, actualizados, omitidos, errores, total: norm.length }
+}
+
 // ─── Actualizar precio de un plan ────────────────────────────────────────────
 // IMPORTANTE: en el schema, planes.precio_por_mes es una columna GENERATED
 // (monto_total / cantidad_meses). Por eso solo actualizamos monto_total y
