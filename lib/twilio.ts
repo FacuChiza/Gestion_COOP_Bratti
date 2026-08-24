@@ -48,6 +48,10 @@ async function enviarWhatsApp(para: string, mensaje: string): Promise<boolean> {
 
 // ── Mensajes predefinidos ─────────────────────────────────────────────────────
 
+const $ = (n: number) => `$${Math.round(n).toLocaleString('es-AR')}`
+const FIRMA = 'Cooperadora Escolar · E.T. N° 34 Bratti'
+
+// Recibo de aporte recibido (efectivo, transferencia o MP)
 export async function wspConfirmacionPago(params: {
   telefono: string
   nombrePagador: string
@@ -56,14 +60,15 @@ export async function wspConfirmacionPago(params: {
   monto: number
 }) {
   const msg =
-    `✅ *Cooperadora Escolar*\n\n` +
-    `Hola ${params.nombrePagador}! Se registró el aporte de *${params.mes}* ` +
-    `para *${params.nombreAlumno}* por *$${params.monto.toLocaleString('es-AR')}*. ` +
-    `¡Gracias! 🙌`
-
+    `✅ *Aporte recibido*\n\n` +
+    `¡Hola ${params.nombrePagador}! Registramos tu aporte de *${params.mes}* ` +
+    `para *${params.nombreAlumno}* por *${$(params.monto)}*.\n\n` +
+    `¡Gracias por colaborar! 💚\n\n` +
+    `_${FIRMA}_`
   return enviarWhatsApp(params.telefono, msg)
 }
 
+// Aviso de cobro del débito automático mensual
 export async function wspDebitoAutomatico(params: {
   telefono: string
   nombrePagador: string
@@ -72,58 +77,48 @@ export async function wspDebitoAutomatico(params: {
   monto: number
 }) {
   const msg =
-    `💳 *Cooperadora Escolar*\n\n` +
-    `Hola ${params.nombrePagador}! Se procesó el aporte automático de *${params.mes}* ` +
-    `para *${params.nombreAlumno}* por *$${params.monto.toLocaleString('es-AR')}*.\n\n` +
-    `Podés ver el detalle en tu portal: ${process.env.NEXT_PUBLIC_APP_URL}/cuenta`
-
+    `💳 *Aporte automático procesado*\n\n` +
+    `¡Hola ${params.nombrePagador}! Se realizó el aporte de *${params.mes}* ` +
+    `para *${params.nombreAlumno}* por *${$(params.monto)}*.\n\n` +
+    `No tenés que hacer nada. ¡Gracias! 💚\n\n` +
+    `_${FIRMA}_`
   return enviarWhatsApp(params.telefono, msg)
 }
 
+// Recordatorio suave (con link directo para pagar de un toque)
 export async function wspRecordatorioMensual(params: {
   telefono: string
   nombrePagador: string
   nombreAlumno: string
   mes: string
   monto: number
+  link?: string
 }) {
   const msg =
-    `📅 *Cooperadora Escolar*\n\n` +
-    `Hola ${params.nombrePagador}! Te recordamos que el aporte de *${params.mes}* ` +
-    `para *${params.nombreAlumno}* es de *$${params.monto.toLocaleString('es-AR')}*.\n\n` +
-    `Colaborá fácil desde tu portal: ${process.env.NEXT_PUBLIC_APP_URL}/cuenta`
-
+    `📅 *Recordatorio de aporte*\n\n` +
+    `¡Hola ${params.nombrePagador}! El aporte de *${params.mes}* para ` +
+    `*${params.nombreAlumno}* es de *${$(params.monto)}*.\n\n` +
+    (params.link ? `Colaborá en un toque acá:\n${params.link}\n\n` : '') +
+    `También podés acercarte a la cooperadora. ¡Gracias! 💚\n\n` +
+    `_${FIRMA}_`
   return enviarWhatsApp(params.telefono, msg)
 }
 
+// Alerta de morosidad (con link directo para regularizar)
 export async function wspAlertaDeuda(params: {
   telefono: string
   nombrePagador: string
   nombreAlumno: string
   mesesDeuda: number
   montoTotal: number
+  link?: string
 }) {
   const msg =
-    `⚠️ *Cooperadora Escolar*\n\n` +
+    `⚠️ *Aportes pendientes*\n\n` +
     `Hola ${params.nombrePagador}. *${params.nombreAlumno}* tiene ` +
-    `*${params.mesesDeuda} aportes* pendientes (total: *$${params.montoTotal.toLocaleString('es-AR')}*).\n\n` +
-    `Te pedimos que te acerques a la cooperadora o regularizá desde: ` +
-    `${process.env.NEXT_PUBLIC_APP_URL}/cuenta`
-
-  return enviarWhatsApp(params.telefono, msg)
-}
-
-export async function wspBienvenida(params: {
-  telefono: string
-  nombrePagador: string
-  nombreAlumno: string
-  portalUrl: string
-}) {
-  const msg =
-    `👋 *Bienvenido/a a la Cooperadora Escolar!*\n\n` +
-    `Hola ${params.nombrePagador}! Tu cuenta fue creada para el alumno *${params.nombreAlumno}*.\n\n` +
-    `Accedé a tu portal en:\n${params.portalUrl}\n\n` +
-    `Ahí vas a poder ver el estado de tus aportes y colaborar online.`
-
+    `*${params.mesesDeuda} aportes* sin realizar (total: *${$(params.montoTotal)}*).\n\n` +
+    (params.link ? `Regularizá acá:\n${params.link}\n\n` : '') +
+    `Si ya lo hiciste, ignorá este mensaje. Cualquier duda, acercate a la cooperadora.\n\n` +
+    `_${FIRMA}_`
   return enviarWhatsApp(params.telefono, msg)
 }

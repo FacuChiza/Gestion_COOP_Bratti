@@ -165,6 +165,7 @@ export async function GET(req: NextRequest) {
           nombreAlumno:  nombreAlumnos,
           mes:           mesActualStr,
           monto:         montoTotal,
+          link:          `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/aporte/${pagador.id}`,
         })
         enviado = enviado || ok
       }
@@ -175,6 +176,7 @@ export async function GET(req: NextRequest) {
           nombreAlumno:  nombreAlumnos,
           mes:           mesActualStr,
           monto:         montoTotal,
+          link:          `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/aporte/${pagador.id}`,
         })
         enviado = enviado || ok
       }
@@ -208,6 +210,7 @@ export async function GET(req: NextRequest) {
           nombreAlumno:  nombreAlumnos,
           mesesDeuda,
           montoTotal,
+          link:          `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/aporte/${pagador.id}`,
         })
         enviado = enviado || ok
       }
@@ -218,6 +221,7 @@ export async function GET(req: NextRequest) {
           nombreAlumno:  nombreAlumnos,
           mesesDeuda,
           montoTotal,
+          link:          `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/aporte/${pagador.id}`,
         })
         enviado = enviado || ok
       }

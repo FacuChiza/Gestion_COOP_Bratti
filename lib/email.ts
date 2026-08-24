@@ -93,7 +93,7 @@ function layoutEmail(contenido: string) {
           <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center">
             <p style="margin:0;font-size:12px;color:#94a3b8">
               Escuela Aristides Bratti · Cooperadora Escolar<br>
-              <a href="${process.env.NEXT_PUBLIC_APP_URL}/cuenta" style="color:#64748b">Accedé a tu portal</a>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/pagar" style="color:#64748b">Realizá tu aporte</a>
             </p>
           </td>
         </tr>
@@ -223,8 +223,10 @@ export async function emailRecordatorioMensual(params: {
   nombreAlumno:  string
   mes:           string
   monto:         number
+  link?:         string
 }): Promise<boolean> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  const payUrl = params.link || `${appUrl}/pagar`
 
   const contenido = `
     <h2 style="margin:0 0 8px;color:#0f172a">Recordatorio de aporte 📅</h2>
@@ -250,13 +252,13 @@ export async function emailRecordatorioMensual(params: {
     </table>
 
     <div style="text-align:center;margin:24px 0">
-      <a href="${appUrl}/cuenta" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">
-        Pagar ahora →
+      <a href="${payUrl}" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">
+        Realizar el aporte →
       </a>
     </div>
 
     <p style="font-size:13px;color:#94a3b8;text-align:center;margin:0">
-      También podés acercarte a la cooperadora para pagar en efectivo.
+      También podés acercarte a la cooperadora para colaborar en efectivo.
     </p>`
 
   return enviarEmail({
@@ -274,8 +276,10 @@ export async function emailAlertaDeuda(params: {
   nombreAlumno:  string
   mesesDeuda:    number
   montoTotal:    number
+  link?:         string
 }): Promise<boolean> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  const payUrl = params.link || `${appUrl}/pagar`
 
   const contenido = `
     <h2 style="margin:0 0 8px;color:#0f172a">Aportes pendientes ⚠️</h2>
@@ -291,12 +295,12 @@ export async function emailAlertaDeuda(params: {
     </div>
 
     <p style="color:#334155;font-size:14px;line-height:1.6">
-      Te pedimos que regularices los aportes a la brevedad. Podés colaborar online desde
-      el portal o acercarte personalmente a la cooperadora.
+      Te pedimos que regularices los aportes a la brevedad. Podés colaborar online o
+      acercarte personalmente a la cooperadora.
     </p>
 
     <div style="text-align:center;margin:24px 0">
-      <a href="${appUrl}/cuenta" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">
+      <a href="${payUrl}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">
         Regularizar aportes →
       </a>
     </div>`
@@ -323,20 +327,14 @@ export async function emailBienvenida(params: {
       Hola <strong>${params.nombrePagador}</strong>,
     </p>
     <p style="color:#334155;font-size:15px;line-height:1.6">
-      Tu cuenta fue creada exitosamente para el/la estudiante <strong>${params.nombreAlumno}</strong>.
-      Desde tu portal podés ver el estado de los aportes y colaborar online de forma fácil y segura.
+      Te sumaste como aportante de <strong>${params.nombreAlumno}</strong>.
+      Podés realizar tu aporte cuando quieras, sin registro ni contraseñas: solo con el
+      DNI del alumno.
     </p>
 
-    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;margin:20px 0">
-      <p style="margin:0;font-size:14px;color:#166534">
-        📧 Tu usuario es: <strong>${params.mail}</strong><br>
-        🔑 Podés cambiar tu contraseña desde el portal en cualquier momento.
-      </p>
-    </div>
-
     <div style="text-align:center;margin:24px 0">
-      <a href="${appUrl}/cuenta" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">
-        Ir a mi portal →
+      <a href="${appUrl}/pagar" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">
+        Realizar un aporte →
       </a>
     </div>`
 
