@@ -339,7 +339,8 @@ export type FilaPadron = { nombre: string; dni: string; curso: string }
  * formato: "Apellido, Nombre" con solo la inicial en mayúscula.
  * El orden (apellido primero) viene del padrón de la escuela.
  */
-export function normalizarNombre(raw: string): string {
+// (sin export: en un archivo 'use server' todo lo exportado debe ser async)
+function normalizarNombre(raw: string): string {
   return raw
     .normalize('NFC')
     .trim()
