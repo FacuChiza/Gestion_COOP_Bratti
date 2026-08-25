@@ -1,14 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Users, UserPlus, Bell, Calendar, Settings, Database, Sliders, Receipt, QrCode, Upload } from 'lucide-react'
+import { Users, UserPlus, Bell, Database, Sliders, Receipt, QrCode, Upload } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { StudentList } from './StudentList'
 import { AlertsSection } from './AlertsSection'
 import { AddPagadorDialog } from './AddPagadorDialog'
 import { CronButton } from './CronButton'
-import { PreciosPanel } from './PreciosPanel'
 import { DataExportPanel } from './DataExportPanel'
 import { ConfiguracionPanel } from './ConfiguracionPanel'
 import { PagosHistoryPanel } from './PagosHistoryPanel'
@@ -40,64 +39,53 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: P
   return (
     <>
       <Tabs defaultValue="alumnos">
-        {/* Barra superior: tabs (scroll horizontal en mobile) + acción primaria */}
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex-1 min-w-0 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
-            <TabsList className="h-12 sm:h-14 p-1 sm:p-1.5 shadow-sm">
-              <TabsTrigger value="alumnos" className="gap-2 px-3 sm:px-4 h-10 sm:h-11">
-                <Users className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Alumnos</span>
-              </TabsTrigger>
-              <TabsTrigger value="alertas" className="gap-2 px-3 sm:px-4 h-10 sm:h-11 relative">
-                <Bell className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Alertas</span>
-                {alumnosConDeuda.length > 0 && (
-                  <span className="ml-0 sm:ml-1 absolute -top-1 -right-1 sm:static rounded-full bg-red-500 text-white text-[10px] sm:text-[11px] font-semibold min-w-[18px] h-[18px] sm:min-w-0 sm:h-auto px-1 sm:px-1.5 sm:py-0.5 flex items-center justify-center leading-none animate-pulse-soft">
-                    {alumnosConDeuda.length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="pagos" className="gap-2 px-3 sm:px-4 h-10 sm:h-11">
-                <Receipt className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Aportes recibidos</span>
-              </TabsTrigger>
-              <TabsTrigger value="cron" className="gap-2 px-3 sm:px-4 h-10 sm:h-11">
-                <Calendar className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Cron</span>
-              </TabsTrigger>
-              <TabsTrigger value="padron" className="gap-2 px-3 sm:px-4 h-10 sm:h-11">
-                <Upload className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Padrón</span>
-              </TabsTrigger>
-              <TabsTrigger value="datos" className="gap-2 px-3 sm:px-4 h-10 sm:h-11">
-                <Database className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Datos</span>
-              </TabsTrigger>
-              <TabsTrigger value="qr" className="gap-2 px-3 sm:px-4 h-10 sm:h-11">
-                <QrCode className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">QR</span>
-              </TabsTrigger>
-              <TabsTrigger value="configuracion" className="gap-2 px-3 sm:px-4 h-10 sm:h-11">
-                <Settings className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Planes</span>
-              </TabsTrigger>
-              <TabsTrigger value="parametros" className="gap-2 px-3 sm:px-4 h-10 sm:h-11">
-                <Sliders className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Parámetros</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* Mobile: solo ícono +. Desktop: botón completo */}
+        {/* Acción primaria en su propia fila para que nunca tape las pestañas */}
+        <div className="flex justify-end mb-3">
           <Button
             onClick={() => setAddDialogOpen(true)}
-            className="gap-2 h-10 sm:h-11 px-3 sm:px-5 shadow-sm hover:shadow-md transition-shadow shrink-0"
-            aria-label="Nuevo aportante/alumno"
+            className="gap-2 h-10 px-4 shadow-sm hover:shadow-md transition-shadow"
           >
             <UserPlus className="h-4 w-4" />
-            <span className="hidden md:inline">Nuevo aportante/alumno</span>
+            Nuevo alumno
           </Button>
         </div>
+
+        {/* Pestañas: bajan de línea si no entran (nunca se cortan) */}
+        <TabsList className="flex flex-wrap h-auto w-full justify-start gap-1 p-1.5 shadow-sm mb-2">
+          <TabsTrigger value="alumnos" className="gap-2 px-3 h-10">
+            <Users className="h-4 w-4 shrink-0" />
+            <span>Alumnos</span>
+          </TabsTrigger>
+          <TabsTrigger value="alertas" className="gap-2 px-3 h-10">
+            <Bell className="h-4 w-4 shrink-0" />
+            <span>Alertas</span>
+            {alumnosConDeuda.length > 0 && (
+              <span className="ml-1 rounded-full bg-red-500 text-white text-[11px] font-semibold px-1.5 py-0.5 leading-none animate-pulse-soft">
+                {alumnosConDeuda.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="pagos" className="gap-2 px-3 h-10">
+            <Receipt className="h-4 w-4 shrink-0" />
+            <span>Aportes recibidos</span>
+          </TabsTrigger>
+          <TabsTrigger value="padron" className="gap-2 px-3 h-10">
+            <Upload className="h-4 w-4 shrink-0" />
+            <span>Padrón</span>
+          </TabsTrigger>
+          <TabsTrigger value="qr" className="gap-2 px-3 h-10">
+            <QrCode className="h-4 w-4 shrink-0" />
+            <span>QR</span>
+          </TabsTrigger>
+          <TabsTrigger value="datos" className="gap-2 px-3 h-10">
+            <Database className="h-4 w-4 shrink-0" />
+            <span>Informes</span>
+          </TabsTrigger>
+          <TabsTrigger value="parametros" className="gap-2 px-3 h-10">
+            <Sliders className="h-4 w-4 shrink-0" />
+            <span>Ajustes</span>
+          </TabsTrigger>
+        </TabsList>
 
         <TabsContent value="alumnos">
           <StudentList alumnos={alumnos} planes={planes} />
@@ -109,10 +97,6 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: P
 
         <TabsContent value="pagos">
           <PagosHistoryPanel />
-        </TabsContent>
-
-        <TabsContent value="cron">
-          <CronButton />
         </TabsContent>
 
         <TabsContent value="padron">
@@ -131,12 +115,13 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: P
           <QrPanel />
         </TabsContent>
 
-        <TabsContent value="configuracion">
-          <PreciosPanel planes={planes} />
-        </TabsContent>
-
+        {/* Ajustes reúne los parámetros editables + la generación manual de aportes
+            (antes estaban repartidos en 3 pestañas distintas). */}
         <TabsContent value="parametros">
-          <ConfiguracionPanel configuracion={configuracion} />
+          <div className="space-y-6">
+            <ConfiguracionPanel configuracion={configuracion} />
+            <CronButton />
+          </div>
         </TabsContent>
       </Tabs>
 

@@ -153,8 +153,8 @@ export async function crearPreferenciaMP(params: {
   /** Opcional: si no se pasa, el pagador ingresa su email en el checkout de MP. */
   pagadorEmail?: string
   referencia: string       // suscripcion_id, pagador_id o alumno_id según tipo
-  // am = aporte mensual de un alumno · aa = aporte anual de un alumno
-  tipo: 'anual' | 'manual' | 'pagador' | 'am' | 'aa'
+  // am = aporte mensual · aa = aporte anual · av = aporte de monto libre
+  tipo: 'anual' | 'manual' | 'pagador' | 'am' | 'aa' | 'av'
   /**
    * URL base a la que MP debe volver. Si no se pasa, va al dashboard.
    */

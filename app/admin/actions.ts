@@ -333,6 +333,23 @@ export async function altaPagadorYAlumno(formData: FormData) {
 // ─── Importar padrón (CSV: nombre, dni, curso) ───────────────────────────────
 
 export type FilaPadron = { nombre: string; dni: string; curso: string }
+
+/**
+ * Normaliza el nombre de un alumno para que todos queden con el mismo
+ * formato: "Apellido, Nombre" con solo la inicial en mayúscula.
+ * El orden (apellido primero) viene del padrón de la escuela.
+ */
+export function normalizarNombre(raw: string): string {
+  return raw
+    .normalize('NFC')
+    .trim()
+    .toLocaleLowerCase('es-AR')
+    // Inicial de cada palabra en mayúscula (respeta acentos)
+    .replace(/(^|[\s,.'’-])([\p{L}])/gu, (_m, sep, letra) => sep + letra.toLocaleUpperCase('es-AR'))
+    .replace(/\s*,\s*/g, ', ')  // coma pegada + un espacio
+    .replace(/\s+/g, ' ')       // colapsar espacios
+    .trim()
+}
 export type ResultadoImport = {
   creados: number
   actualizados: number
@@ -363,7 +380,7 @@ export async function importarPadron(
   // Normalizar cada fila: derivar turno y grado desde el curso
   const norm = recorte
     .map((f) => {
-      const nombre = (f.nombre ?? '').trim()
+      const nombre = normalizarNombre(f.nombre ?? '')
       const dni = (f.dni ?? '').replace(/\D/g, '')
       const cursoRaw = (f.curso ?? '').trim()
       const esAdulto = /adulto/i.test(cursoRaw)

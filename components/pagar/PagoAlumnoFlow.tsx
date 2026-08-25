@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Search, ArrowRight, CreditCard, GraduationCap, Loader2, ChevronLeft, Repeat, Building2, Copy, Check } from 'lucide-react'
+import { Search, ArrowRight, CreditCard, GraduationCap, Loader2, ChevronLeft, Repeat, Building2, Copy, Check, HandCoins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { formatMonto } from '@/lib/utils'
-import { buscarAlumnoParaAporte, crearPagoMensualAlumno, crearPagoAnualAlumno, crearDebitoAlumno, type AlumnoParaAporte, type DatosTransferencia } from '@/app/pagar/actions'
+import { buscarAlumnoParaAporte, crearPagoMensualAlumno, crearPagoAnualAlumno, crearDebitoAlumno, crearPagoLibreAlumno, type AlumnoParaAporte, type DatosTransferencia } from '@/app/pagar/actions'
 
 export function PagoAlumnoFlow({ transferencia }: { transferencia: DatosTransferencia }) {
   const [term, setTerm] = useState('')
@@ -19,6 +19,8 @@ export function PagoAlumnoFlow({ transferencia }: { transferencia: DatosTransfer
   const [mostrarDebito, setMostrarDebito] = useState(false)
   const [debEmail, setDebEmail] = useState('')
   const [debTel, setDebTel] = useState('')
+  const [mostrarLibre, setMostrarLibre] = useState(false)
+  const [montoLibre, setMontoLibre] = useState('')
   const [mostrarTransfer, setMostrarTransfer] = useState(false)
   const [copiado, setCopiado] = useState<string | null>(null)
 
@@ -57,6 +59,17 @@ export function PagoAlumnoFlow({ transferencia }: { transferencia: DatosTransfer
     })
   }
 
+  const pagarLibre = (alumnoId: string) => {
+    setError(null)
+    const monto = Number(montoLibre)
+    if (!monto || monto < 100) { setError('Ingresá un monto de al menos $100.'); return }
+    startPagar(async () => {
+      const r = await crearPagoLibreAlumno(alumnoId, monto)
+      if (r.error) { setError(r.error); return }
+      if (r.initPoint) window.location.href = r.initPoint
+    })
+  }
+
   const copiar = async (valor: string, campo: string) => {
     try {
       await navigator.clipboard.writeText(valor)
@@ -69,6 +82,7 @@ export function PagoAlumnoFlow({ transferencia }: { transferencia: DatosTransfer
     setElegido(null); setResultados(null)
     setMostrarDebito(false); setDebEmail(''); setDebTel('')
     setMostrarTransfer(false)
+    setMostrarLibre(false); setMontoLibre('')
   }
 
   // ── Card del alumno elegido → pagar ─────────────────────────
@@ -130,6 +144,77 @@ export function PagoAlumnoFlow({ transferencia }: { transferencia: DatosTransfer
             >
               o pagar el año completo · <span className="font-semibold">{formatMonto(elegido.montoAnual)}</span>
             </button>
+
+            {/* Aporte de monto libre: colaborar con lo que se pueda */}
+            <div className="pt-3 border-t border-slate-100">
+              {!mostrarLibre ? (
+                <button
+                  type="button"
+                  onClick={() => { setMostrarLibre(true); setError(null) }}
+                  disabled={pagando}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 hover:border-slate-300 py-2.5 text-sm font-medium text-slate-700 transition-colors disabled:opacity-50"
+                >
+                  <HandCoins className="h-4 w-4" />
+                  Colaborar con otro monto
+                </button>
+              ) : (
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Aporte voluntario</p>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Colaborá con el monto que puedas. Todo suma. 💚
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="monto-libre" className="text-xs">Monto a aportar</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
+                      <Input
+                        id="monto-libre"
+                        type="number"
+                        inputMode="numeric"
+                        min={100}
+                        step={100}
+                        value={montoLibre}
+                        onChange={(e) => setMontoLibre(e.target.value)}
+                        placeholder="5000"
+                        className="pl-6"
+                      />
+                    </div>
+                    {/* Atajos rápidos */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {[2000, 5000, 10000, 20000].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setMontoLibre(String(m))}
+                          className="px-2.5 py-1 rounded-md border border-slate-200 bg-white text-xs text-slate-600 hover:border-slate-400 hover:text-slate-900 transition-colors"
+                        >
+                          {formatMonto(m)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => { setMostrarLibre(false); setMontoLibre(''); setError(null) }}
+                      disabled={pagando}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      className="flex-1 gap-1.5"
+                      onClick={() => pagarLibre(elegido.id)}
+                      disabled={pagando || !montoLibre}
+                    >
+                      {pagando ? <><Loader2 className="h-4 w-4 animate-spin" /> …</> : 'Aportar'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Débito automático */}
             <div className="pt-3 border-t border-slate-100">

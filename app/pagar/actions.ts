@@ -165,6 +165,44 @@ export async function crearPagoAnualAlumno(
 }
 
 /**
+ * Aporte voluntario de MONTO LIBRE: el aportante colabora con lo que puede.
+ * Se registra como aporte recibido; si el monto alcanza a cubrir el aporte
+ * del mes, esa cuota queda saldada (lo resuelve el webhook, tipo 'av').
+ */
+export async function crearPagoLibreAlumno(
+  alumnoId: string,
+  montoRaw: number,
+): Promise<{ initPoint?: string; error?: string }> {
+  const monto = Math.round(Number(montoRaw))
+  if (!monto || isNaN(monto) || monto < 100) {
+    return { error: 'El monto mínimo es $100.' }
+  }
+  if (monto > 2000000) {
+    return { error: 'El monto es demasiado alto. Verificá el valor.' }
+  }
+
+  const admin = createAdminClient()
+  const { data: alumno } = await admin
+    .from('alumnos')
+    .select('id, nombre, activo')
+    .eq('id', alumnoId)
+    .maybeSingle()
+  if (!alumno || alumno.activo === false) return { error: 'Alumno no encontrado.' }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const mp = await crearPreferenciaMP({
+    titulo: `Aporte voluntario — ${alumno.nombre}`,
+    monto,
+    referencia: alumno.id,
+    tipo: 'av',
+    backUrlBase: `${appUrl}/pagar`,
+  })
+
+  if (!mp.ok) return { error: mp.error }
+  return { initPoint: mp.init_point }
+}
+
+/**
  * Activa el débito automático mensual para un alumno.
  * Necesita el email (MP lo exige para la suscripción). El WhatsApp es
  * opcional pero recomendado para los avisos. Crea/vincula el pagador,

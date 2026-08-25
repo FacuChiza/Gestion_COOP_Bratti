@@ -70,7 +70,9 @@ export async function POST(req: NextRequest) {
       // ── Aporte mensual de un alumno (flujo padrón, sin registro previo) ──
       // Referencia: am:{alumnoId}. El pagador se resuelve/crea desde el
       // email que el padre usó en el checkout de MercadoPago.
-      if (tipo === 'am') {
+      // 'av' = aporte de monto libre: se registra igual, pero la cuota del mes
+      // solo se salda si lo aportado alcanza a cubrirla.
+      if (tipo === 'am' || tipo === 'av') {
         const alumnoId = referencia
         const payerEmail = String(pago.payer?.email ?? '').toLowerCase()
         const payerNombre =
@@ -105,11 +107,15 @@ export async function POST(req: NextRequest) {
         const anio = ahora.getFullYear()
         let cuotaId: string | null = null
         const { data: cuotaExistente } = await supabase
-          .from('cuotas').select('id').eq('alumno_id', alumnoId).eq('mes', mesNum).eq('año', anio).maybeSingle()
+          .from('cuotas').select('id, monto').eq('alumno_id', alumnoId).eq('mes', mesNum).eq('año', anio).maybeSingle()
         if (cuotaExistente) {
-          cuotaId = cuotaExistente.id
-          await supabase.from('cuotas').update({ estado: 'pagada' }).eq('id', cuotaExistente.id)
-        } else {
+          // En monto libre, solo saldamos si lo aportado cubre la cuota.
+          const alcanza = tipo === 'am' || montoPagado >= (cuotaExistente.monto ?? 0)
+          if (alcanza) {
+            cuotaId = cuotaExistente.id
+            await supabase.from('cuotas').update({ estado: 'pagada' }).eq('id', cuotaExistente.id)
+          }
+        } else if (tipo === 'am') {
           const { data: nuevaCuota } = await supabase
             .from('cuotas')
             .insert({ alumno_id: alumnoId, mes: mesNum, año: anio, monto: montoPagado, estado: 'pagada' })
@@ -124,6 +130,7 @@ export async function POST(req: NextRequest) {
               pagador_id: pagadorId, monto: montoPagado, descuento: 0,
               fecha: ahora.toISOString().split('T')[0],
               metodo: 'mercadopago', referencia_externa: String(paymentId), registrado_por: 'webhook_mp',
+              notas: tipo === 'av' ? 'Aporte voluntario (monto libre)' : null,
             }).select('id').single()
           if (pagoCreado && cuotaId) {
             await supabase.from('pagos_cuotas').insert({ pago_id: pagoCreado.id, cuota_id: cuotaId })
