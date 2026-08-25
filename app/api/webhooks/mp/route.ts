@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
                 mail: pg.mail, nombrePagador: pg.nombre, nombreAlumno: alumno.nombre,
                 cuotas: [{ mes: formatMes(mesNum, anio), monto: montoPagado }],
                 montoTotal: montoPagado, metodoPago: 'mercadopago',
-                nroRecibo: String(paymentId), pagadorId,
+                nroRecibo: String(paymentId), pagadorId, pagoId: pagoCreado?.id,
               })
             }
           }
@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
               mail: pg.mail, nombrePagador: pg.nombre, nombreAlumno: alumno.nombre,
               cuotas: [{ mes: `Aporte anual ${anio}`, monto: montoPagado }],
               montoTotal: montoPagado, metodoPago: 'mercadopago',
-              nroRecibo: String(paymentId), pagadorId,
+              nroRecibo: String(paymentId), pagadorId, pagoId: pagoCreado?.id,
             })
           }
         }
@@ -320,7 +320,7 @@ export async function POST(req: NextRequest) {
             })),
             montoTotal,
             metodoPago: 'mercadopago',
-            nroRecibo: String(paymentId),
+            nroRecibo: String(paymentId), pagoId: pagoCreado?.id,
             pagadorId: referencia,
           })
         }
@@ -387,7 +387,7 @@ export async function POST(req: NextRequest) {
             })),
             montoTotal,
             metodoPago: 'mercadopago',
-            nroRecibo: String(paymentId),
+            nroRecibo: String(paymentId), pagoId: pagoCreado?.id,
             pagadorId: alumno.pagadores.id,
           })
         }
@@ -519,7 +519,7 @@ export async function POST(req: NextRequest) {
               cuotas: [{ mes: formatMes(mesNum, año), monto }],
               montoTotal: monto,
               metodoPago: 'mercadopago',
-              nroRecibo: refDebito,
+              nroRecibo: refDebito, pagoId: pagoCreado?.id,
               pagadorId: alumno.pagadores.id,
             })
           }

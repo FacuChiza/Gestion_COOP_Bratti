@@ -243,6 +243,7 @@ export async function registrarPago(formData: FormData) {
         montoTotal,
         metodoPago: metodo === 'mercadopago' ? 'mercadopago' : 'efectivo',
         nroRecibo:  pago.id,
+        pagoId:     pago.id,
         pagadorId:  pagadorId ?? undefined,
       })
     }

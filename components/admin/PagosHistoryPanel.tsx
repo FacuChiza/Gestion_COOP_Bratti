@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Ban, RefreshCw } from 'lucide-react'
+import { Ban, RefreshCw, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatMes, formatMonto } from '@/lib/utils'
@@ -134,17 +134,28 @@ export function PagosHistoryPanel() {
                 </td>
                 <td className="px-4 py-3 text-right font-medium">{formatMonto(p.monto)}</td>
                 <td className="px-4 py-3">
-                  {!p.anulado && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setAnulando(p)}
-                      className="text-red-600 hover:bg-red-50"
-                      title="Anular aporte"
+                  <div className="flex items-center justify-end gap-1">
+                    <a
+                      href={`/recibo/${p.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Ver comprobante"
+                      className="inline-flex items-center justify-center h-8 w-8 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                     >
-                      <Ban className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
+                      <FileText className="h-3.5 w-3.5" />
+                    </a>
+                    {!p.anulado && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setAnulando(p)}
+                        className="text-red-600 hover:bg-red-50"
+                        title="Anular aporte"
+                      >
+                        <Ban className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -209,19 +220,28 @@ export function PagosHistoryPanel() {
               </div>
             )}
 
-            {!p.anulado && (
-              <div className="pt-1 border-t border-slate-100">
+            <div className="pt-1 border-t border-slate-100 flex gap-2">
+              <a
+                href={`/recibo/${p.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 rounded-md border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                Comprobante
+              </a>
+              {!p.anulado && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => setAnulando(p)}
-                  className="text-red-600 hover:bg-red-50 h-8 w-full justify-center gap-1.5 text-xs"
+                  className="text-red-600 hover:bg-red-50 h-8 flex-1 justify-center gap-1.5 text-xs"
                 >
                   <Ban className="h-3.5 w-3.5" />
-                  Anular aporte
+                  Anular
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ))}
       </div>

@@ -34,20 +34,24 @@ export function CronButton() {
       <CardHeader>
         <CardTitle className="text-base">Generación mensual de aportes</CardTitle>
         <CardDescription>
-          Esta acción:
+          <span className="block mb-2">
+            Esto se hace <strong>solo, el día 1 de cada mes</strong>. No hace falta que lo
+            ejecutes: el botón está por si necesitás adelantarlo o repetirlo.
+          </span>
+          Al ejecutarlo:
           <ol className="list-decimal list-inside mt-1 space-y-0.5">
-            <li>Genera los aportes de <strong>{formatMes(mesActual, añoActual)}</strong> para todas las suscripciones activas</li>
+            <li>Genera el aporte de <strong>{formatMes(mesActual, añoActual)}</strong> para cada alumno activo</li>
             <li>Marca como <strong>no realizados</strong> los aportes pendientes de {formatMes(fechaMesAnterior.getMonth() + 1, fechaMesAnterior.getFullYear())}</li>
           </ol>
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Button onClick={handleCron} disabled={isPending} className="gap-2">
+        <Button onClick={handleCron} disabled={isPending} variant="outline" className="gap-2">
           <RefreshCw className={`h-4 w-4 ${isPending ? 'animate-spin' : ''}`} />
-          {isPending ? 'Ejecutando...' : 'Ejecutar proceso mensual'}
+          {isPending ? 'Ejecutando...' : 'Ejecutar ahora'}
         </Button>
         <p className="mt-2 text-xs text-slate-400">
-          Los aportes ya existentes no se duplican. Podés ejecutar esto varias veces de forma segura.
+          Es seguro: los aportes ya generados no se duplican.
         </p>
       </CardContent>
     </Card>

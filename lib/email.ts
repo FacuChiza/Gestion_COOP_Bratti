@@ -122,6 +122,8 @@ export type ReciboParams = {
   nroRecibo?:    string
   /** Si se pasa, se incluye en el email un link permanente /aporte/[pagadorId] */
   pagadorId?:    string
+  /** Id del pago en nuestra base → habilita el botón "Descargar comprobante". */
+  pagoId?:       string
 }
 
 export async function enviarRecibo(params: ReciboParams): Promise<boolean> {
@@ -190,6 +192,17 @@ export async function enviarRecibo(params: ReciboParams): Promise<boolean> {
         <td style="text-align:right;font-size:13px;color:#334155;font-weight:600">${metodo}</td>
       </tr>
     </table>
+
+    ${params.pagoId ? `
+    <div style="text-align:center;margin:24px 0 8px">
+      <a href="${process.env.NEXT_PUBLIC_APP_URL}/recibo/${params.pagoId}"
+         style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">
+        Ver y descargar comprobante →
+      </a>
+      <p style="margin:8px 0 0;font-size:11px;color:#94a3b8">
+        Comprobante oficial con el sello de la escuela, listo para guardar o imprimir.
+      </p>
+    </div>` : ''}
 
     <p style="margin:20px 0 0;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#166534;text-align:center">
       Este comprobante acredita el aporte voluntario a la Cooperadora Escolar Aristides Bratti.

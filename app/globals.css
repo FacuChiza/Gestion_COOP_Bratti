@@ -10,6 +10,14 @@ body {
   @apply bg-slate-50 text-slate-900;
 }
 
+/* Impresión de comprobantes: A4 con márgenes y colores fieles. */
+@media print {
+  @page { size: A4; margin: 14mm; }
+  body { background: #fff !important; }
+  /* Forzar que se impriman los fondos (total en oscuro, badges, etc.) */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}
+
 /* Oculta el scrollbar pero mantiene el scroll funcional. */
 @layer utilities {
   .scrollbar-hide {
