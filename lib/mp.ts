@@ -38,6 +38,32 @@ function headers(modo: 'checkout' | 'suscripcion' = 'checkout') {
   }
 }
 
+/**
+ * Traduce los errores frecuentes de MercadoPago a un mensaje que un
+ * aportante pueda entender y accionar. Si no reconocemos el error,
+ * devolvemos uno genérico (el detalle técnico queda en los logs).
+ */
+function mensajeAmigableMP(msgRaw: string): string {
+  const m = (msgRaw ?? '').toLowerCase()
+
+  if (m.includes('payer and collector') || m.includes('cannot be the same')) {
+    return 'No podés aportar con la misma cuenta de Mercado Pago que recibe los aportes. Usá otro email o pagá con tarjeta desde otra cuenta.'
+  }
+  if (m.includes('invalid') && m.includes('email')) {
+    return 'El email no es válido. Revisalo e intentá de nuevo.'
+  }
+  if (m.includes('invalid users involved') || m.includes('invalid user')) {
+    return 'Mercado Pago no aceptó esa cuenta para esta operación. Probá con otro email.'
+  }
+  if (m.includes('60 characters') || m.includes('reason')) {
+    return 'Hubo un problema al preparar la suscripción. Avisale a la cooperadora.'
+  }
+  if (m.includes('unauthorized') || m.includes('invalid_token') || m.includes('access')) {
+    return 'El sistema de pagos no está bien configurado. Avisale a la cooperadora.'
+  }
+  return 'Mercado Pago no pudo procesar la operación en este momento. Probá de nuevo en unos minutos.'
+}
+
 export function mpConfigurado(): boolean {
   return !!process.env.MP_ACCESS_TOKEN && !!process.env.MP_PUBLIC_KEY
 }
@@ -135,7 +161,7 @@ export async function crearSuscripcionMP(params: {
         tokenTail: tokenUsado.slice(-6),
         tokenSource: process.env.MP_SUBSCRIPTION_ACCESS_TOKEN ? 'MP_SUBSCRIPTION_ACCESS_TOKEN' : 'MP_ACCESS_TOKEN (fallback)',
       })
-      return { ok: false, error: `MercadoPago rechazó la suscripción: ${msg}` }
+      return { ok: false, error: mensajeAmigableMP(msg) }
     }
 
     return { ok: true, id: data.id, init_point: data.init_point }
@@ -210,7 +236,7 @@ export async function crearPreferenciaMP(params: {
     if (!res.ok || !data.id || !data.init_point) {
       const msg = data.message || data.error || `HTTP ${res.status}`
       console.error('[MP preference] error:', { status: res.status, body, response: data })
-      return { ok: false, error: `MercadoPago rechazó el pago: ${msg}` }
+      return { ok: false, error: mensajeAmigableMP(msg) }
     }
 
     return {
