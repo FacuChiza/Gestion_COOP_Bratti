@@ -31,13 +31,15 @@ export function PagosHistoryPanel() {
   const [loading, setLoading] = useState(true)
   const [verAnulados, setVerAnulados] = useState(false)
   const [anulando, setAnulando] = useState<PagoRow | null>(null)
+  const anioActual = new Date().getFullYear()
+  const [anio, setAnio] = useState<number>(anioActual)
 
   const cargar = useCallback(() => {
     setLoading(true)
-    getPagosRecientes({ incluirAnulados: verAnulados, limit: 200 })
+    getPagosRecientes({ incluirAnulados: verAnulados, limit: 500, anio })
       .then((data) => setPagos(data as PagoRow[]))
       .finally(() => setLoading(false))
-  }, [verAnulados])
+  }, [verAnulados, anio])
 
   useEffect(() => { cargar() }, [cargar])
 
@@ -60,6 +62,16 @@ export function PagosHistoryPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <select
+          value={anio}
+          onChange={(e) => setAnio(Number(e.target.value))}
+          className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
+          title="Ciclo lectivo"
+        >
+          {Array.from({ length: 5 }, (_, i) => anioActual - i).map((a) => (
+            <option key={a} value={a}>Ciclo {a}</option>
+          ))}
+        </select>
         <label className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-600 whitespace-nowrap">
           <input
             type="checkbox"
@@ -69,7 +81,7 @@ export function PagosHistoryPanel() {
           />
           Mostrar anulados
         </label>
-        <span className="text-xs sm:text-sm text-slate-500 whitespace-nowrap">{pagos.length} pagos</span>
+        <span className="text-xs sm:text-sm text-slate-500 whitespace-nowrap">{pagos.length} aportes</span>
         <Button variant="outline" size="sm" onClick={cargar} className="gap-1.5 ml-auto">
           <RefreshCw className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Refrescar</span>
@@ -95,7 +107,7 @@ export function PagosHistoryPanel() {
               <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Cargando...</td></tr>
             )}
             {!loading && pagos.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Sin pagos registrados</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Sin aportes registrados en este ciclo</td></tr>
             )}
             {!loading && pagos.map((p) => (
               <tr
@@ -172,7 +184,7 @@ export function PagosHistoryPanel() {
         )}
         {!loading && pagos.length === 0 && (
           <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-slate-400">
-            Sin pagos registrados
+            Sin aportes registrados en este ciclo
           </div>
         )}
         {!loading && pagos.map((p) => (

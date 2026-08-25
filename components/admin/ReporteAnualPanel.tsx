@@ -115,11 +115,12 @@ function imprimirReporte(r: ReporteAnual) {
 
 export function ReporteAnualPanel() {
   const anioActual = new Date().getFullYear()
+  const [anio, setAnio] = useState(anioActual)
   const [isPending, startTransition] = useTransition()
 
   const generar = () => {
     startTransition(async () => {
-      const r = await getReporteAnual()
+      const r = await getReporteAnual(anio)
       imprimirReporte(r)
     })
   }
@@ -131,18 +132,30 @@ export function ReporteAnualPanel() {
           <FileText className="h-5 w-5 text-slate-600" />
         </div>
         <div>
-          <h3 className="font-semibold text-slate-900">Resumen del ciclo {anioActual} (PDF)</h3>
+          <h3 className="font-semibold text-slate-900">Resumen del ciclo (PDF)</h3>
           <p className="text-sm text-slate-500 mt-0.5">
             Informe con lo recaudado, lo pendiente, la evolución mes a mes y los medios de
-            pago. Se puede generar en cualquier momento del año.
+            pago. Elegí el ciclo lectivo: sirve tanto para ver cómo va el año en curso
+            como para consultar un año cerrado.
           </p>
         </div>
       </div>
 
-      <Button onClick={generar} disabled={isPending} className="gap-2">
-        <Download className="h-4 w-4" />
-        {isPending ? 'Generando…' : 'Generar PDF'}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={anio}
+          onChange={(e) => setAnio(Number(e.target.value))}
+          className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
+        >
+          {Array.from({ length: 5 }, (_, i) => anioActual - i).map((a) => (
+            <option key={a} value={a}>Ciclo {a}</option>
+          ))}
+        </select>
+        <Button onClick={generar} disabled={isPending} className="gap-2">
+          <Download className="h-4 w-4" />
+          {isPending ? 'Generando…' : 'Generar PDF'}
+        </Button>
+      </div>
 
       <p className="text-xs text-slate-400">
         Se abre la vista de impresión: elegí <strong>“Guardar como PDF”</strong> como destino.

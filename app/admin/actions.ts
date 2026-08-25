@@ -625,11 +625,14 @@ export type ReporteAnual = {
   porMetodo: { metodo: string; total: number; cantidad: number }[]
 }
 
-export async function getReporteAnual(): Promise<ReporteAnual> {
+export async function getReporteAnual(anioParam?: number): Promise<ReporteAnual> {
   const admin = createAdminClient()
   const ahora = new Date()
-  const anio = ahora.getFullYear()
-  const mesActual = ahora.getMonth() + 1
+  const anio = anioParam ?? ahora.getFullYear()
+  // Si el reporte es de un año pasado, "el mes actual" no aplica: usamos
+  // diciembre para que el corte mensual sea el cierre de ese ciclo.
+  const esAnioEnCurso = anio === ahora.getFullYear()
+  const mesActual = esAnioEnCurso ? ahora.getMonth() + 1 : 12
   const primerDiaAnio = `${anio}-01-01`
 
   const [{ count: alumnosActivos }, { count: aportantes }] = await Promise.all([
@@ -639,7 +642,8 @@ export async function getReporteAnual(): Promise<ReporteAnual> {
 
   // Pagos del año (no anulados)
   const { data: pagos } = await admin
-    .from('pagos').select('monto, fecha, metodo').eq('anulado', false).gte('fecha', primerDiaAnio)
+    .from('pagos').select('monto, fecha, metodo').eq('anulado', false)
+    .gte('fecha', primerDiaAnio).lte('fecha', `${anio}-12-31`)
 
   const porMesMonto = new Array(12).fill(0)
   const porMetodoMap = new Map<string, { total: number; cantidad: number }>()
@@ -925,6 +929,8 @@ export async function cambiarPlanAlumno(formData: FormData) {
 export async function getPagosRecientes(opts?: {
   incluirAnulados?: boolean
   limit?: number
+  /** Ciclo lectivo a consultar. Si no se pasa, trae todos los años. */
+  anio?: number
 }) {
   const admin = createAdminClient()
   const limit = opts?.limit ?? 100
@@ -935,6 +941,13 @@ export async function getPagosRecientes(opts?: {
     .order('fecha', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(limit)
+
+  // Separar por ciclo lectivo: así lo histórico no se mezcla con lo actual.
+  if (opts?.anio) {
+    query = query
+      .gte('fecha', `${opts.anio}-01-01`)
+      .lte('fecha', `${opts.anio}-12-31`)
+  }
 
   if (!opts?.incluirAnulados) {
     query = query.eq('anulado', false)
