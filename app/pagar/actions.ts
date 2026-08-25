@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { crearPreferenciaMP, crearSuscripcionMP } from '@/lib/mp'
 import { getPreciosConfig, montoMensual, cantidadFamiliaActiva } from '@/lib/precios'
+import { permitido, MSG_LIMITE } from '@/lib/rate-limit'
 
 export type DatosTransferencia = {
   alias: string
@@ -40,6 +41,9 @@ export type Sugerencia = { id: string; nombre: string; grado: string; turno: str
 export async function sugerirAlumnos(term: string): Promise<Sugerencia[]> {
   const t = (term ?? '').trim()
   if (t.length < 2) return []
+  // Se llama mientras el aportante escribe, así que el límite es holgado;
+  // corta el barrido automatizado del padrón.
+  if (!(await permitido('sugerir', 40, 60))) return []
 
   const admin = createAdminClient()
   const soloDigitos = t.replace(/\D/g, '')
@@ -80,6 +84,7 @@ export async function buscarAlumnoParaAporte(
 ): Promise<{ alumnos?: AlumnoParaAporte[]; error?: string }> {
   const t = (term ?? '').trim()
   if (t.length < 3) return { error: 'Escribí el DNI o el nombre del alumno.' }
+  if (!(await permitido('buscar', 20, 60))) return { error: MSG_LIMITE }
 
   const admin = createAdminClient()
   const soloDigitos = t.replace(/\D/g, '')
@@ -129,6 +134,7 @@ export async function buscarAlumnoParaAporte(
 export async function getAlumnoParaAportePorId(
   alumnoId: string,
 ): Promise<{ alumno?: AlumnoParaAporte; error?: string }> {
+  if (!(await permitido('buscar', 20, 60))) return { error: MSG_LIMITE }
   const admin = createAdminClient()
   const { data: a } = await admin
     .from('alumnos')
@@ -161,6 +167,7 @@ export async function getAlumnoParaAportePorId(
 export async function crearPagoMensualAlumno(
   alumnoId: string,
 ): Promise<{ initPoint?: string; error?: string }> {
+  if (!(await permitido('pago', 10, 300))) return { error: MSG_LIMITE }
   const admin = createAdminClient()
   const { data: alumno } = await admin
     .from('alumnos')
@@ -196,6 +203,7 @@ export async function crearPagoMensualAlumno(
 export async function crearPagoAnualAlumno(
   alumnoId: string,
 ): Promise<{ initPoint?: string; error?: string }> {
+  if (!(await permitido('pago', 10, 300))) return { error: MSG_LIMITE }
   const admin = createAdminClient()
   const { data: alumno } = await admin
     .from('alumnos')
@@ -237,6 +245,7 @@ export async function crearPagoLibreAlumno(
   if (monto > 2000000) {
     return { error: 'El monto es demasiado alto. Verificá el valor.' }
   }
+  if (!(await permitido('pago', 10, 300))) return { error: MSG_LIMITE }
 
   const admin = createAdminClient()
   const { data: alumno } = await admin
@@ -273,6 +282,7 @@ export async function crearDebitoAlumno(
 ): Promise<{ initPoint?: string; error?: string }> {
   const email = (emailRaw ?? '').trim().toLowerCase()
   if (!email || !email.includes('@')) return { error: 'Ingresá un email válido.' }
+  if (!(await permitido('debito', 5, 600))) return { error: MSG_LIMITE }
 
   const admin = createAdminClient()
   const { data: alumno } = await admin
