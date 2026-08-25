@@ -15,6 +15,7 @@ import { PagosHistoryPanel } from './PagosHistoryPanel'
 import { QrPanel } from './QrPanel'
 import { ImportarPadronPanel } from './ImportarPadronPanel'
 import { ReporteAnualPanel } from './ReporteAnualPanel'
+import { ProbarEmailPanel } from './ProbarEmailPanel'
 import type { AlumnoConEstado, Plan, ConfiguracionItem } from '@/types'
 
 type AlumnoDeuda = {
@@ -122,6 +123,7 @@ export function AdminTabs({ alumnos, alumnosConDeuda, planes, configuracion }: P
           <div className="space-y-6">
             <ReporteAnualPanel />
             <DataExportPanel />
+            <ProbarEmailPanel />
           </div>
         </TabsContent>
 

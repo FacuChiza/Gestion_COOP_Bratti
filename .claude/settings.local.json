@@ -43,7 +43,8 @@
       "Bash(curl -s -o /dev/null -w \"cron/mensual sin auth: %{http_code}\\\\n\" \"https://gestion-coop-bratti.vercel.app/api/cron/mensual\" --max-time 20)",
       "Bash(python -c ' *)",
       "Bash(python \"C:\\\\Users\\\\FACUCH~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Facu-Chiarenza-Desktop-JOBS-Pasarela-de-pago-COOP\\\\28d3873c-d0af-45b9-ad1a-32373e786339\\\\scratchpad\\\\extraer_padron.py\")",
-      "Bash(python -)"
+      "Bash(python -)",
+      "Bash(git commit -q -m ' *)"
     ]
   }
 }

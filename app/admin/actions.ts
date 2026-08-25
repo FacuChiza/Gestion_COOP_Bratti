@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { generarAportesMensuales } from '@/lib/cron-mensual'
 import { cancelarSuscripcionMP } from '@/lib/mp'
 import { wspConfirmacionPago } from '@/lib/twilio'
-import { enviarRecibo } from '@/lib/email'
+import { enviarRecibo, emailConfigurado } from '@/lib/email'
 import { formatMes } from '@/lib/utils'
 import type { AlumnoConEstado } from '@/types'
 
@@ -554,6 +554,39 @@ export async function getResumenEconomico(): Promise<ResumenEconomico> {
     aportesPendientesMes: pendientesMes ?? 0,
     anio,
   }
+}
+
+// ─── Prueba de envío de email (diagnóstico) ──────────────────────────────────
+
+/**
+ * Envía un recibo de ejemplo para verificar que Resend está bien configurado,
+ * sin necesidad de hacer un aporte real. Devuelve un mensaje claro según el
+ * resultado para que el directivo sepa qué falta.
+ */
+export async function probarEmail(destino: string): Promise<{ ok?: true; error?: string }> {
+  const mail = (destino ?? '').trim().toLowerCase()
+  if (!mail.includes('@')) return { error: 'Ingresá un email válido.' }
+
+  if (!emailConfigurado()) {
+    return { error: 'Falta configurar RESEND_API_KEY en el servidor. Avisale al administrador del sistema.' }
+  }
+
+  const enviado = await enviarRecibo({
+    mail,
+    nombrePagador: 'Aportante de prueba',
+    nombreAlumno: 'Alumno de prueba',
+    cuotas: [{ mes: formatMes(new Date().getMonth() + 1, new Date().getFullYear()), monto: 10000 }],
+    montoTotal: 10000,
+    metodoPago: 'efectivo',
+    nroRecibo: 'PRUEBA-' + Date.now().toString().slice(-6),
+  })
+
+  if (!enviado) {
+    return {
+      error: 'Resend rechazó el envío. Revisá que la API key sea válida y, si usás dominio propio, que esté verificado en resend.com.',
+    }
+  }
+  return { ok: true }
 }
 
 // ─── Reporte anual (para el PDF imprimible) ──────────────────────────────────
