@@ -123,7 +123,7 @@ export function DataExportPanel() {
                 onClick={() => descargar(exp.tipo, exp.filtroFecha)}
               >
                 <Download className="h-4 w-4" />
-                Descargar Excel (.csv)
+                Descargar Excel
               </Button>
             </div>
           )
@@ -131,8 +131,8 @@ export function DataExportPanel() {
       </div>
 
       <p className="text-xs text-slate-500">
-        Los archivos se abren directamente con Excel o Google Sheets. Si los acentos
-        se ven raros, abrí el archivo desde Excel → Datos → Desde texto/CSV.
+        Los archivos se abren directamente con Excel o Google Sheets, ya formateados:
+        encabezados fijos, filtros por columna y montos con formato de moneda.
       </p>
     </div>
   )

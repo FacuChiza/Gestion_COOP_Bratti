@@ -1,5 +1,5 @@
 /**
- * Endpoints de exportación CSV para el panel admin.
+ * Endpoints de exportación a Excel (.xlsx) para el panel admin.
  *
  * Tipos disponibles (param `tipo`):
  *   - alumnos    → todos los alumnos con su pagador, plan y estado actual
@@ -12,7 +12,8 @@
 
 import type { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { toCSV, csvResponse, fechaCorta } from '@/lib/csv'
+import { fechaCorta } from '@/lib/csv'
+import { generarExcel, excelResponse } from '@/lib/excel'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,7 @@ const NOMBRE_MES = [
 function nombreArchivo(tipo: string, sufijo = ''): string {
   const hoy = new Date().toISOString().split('T')[0]
   const s = sufijo ? `_${sufijo}` : ''
-  return `coop_${tipo}${s}_${hoy}.csv`
+  return `coop_${tipo}${s}_${hoy}.xlsx`
 }
 
 // ─── Tipos auxiliares ─────────────────────────────────────────────────────────
@@ -158,26 +159,26 @@ export async function GET(
       }
     })
 
-    const csv = toCSV(rows, [
-      { key: 'nombre_alumno',      label: 'Alumno' },
-      { key: 'grado',              label: 'Grado' },
-      { key: 'turno',              label: 'Turno' },
-      { key: 'activo',             label: 'Activo' },
-      { key: 'pagador',            label: 'Aportante' },
-      { key: 'pagador_email',      label: 'Email aportante' },
-      { key: 'pagador_telefono',   label: 'Teléfono' },
-      { key: 'pagador_dni',        label: 'DNI' },
-      { key: 'plan',               label: 'Plan' },
-      { key: 'modalidad',          label: 'Modalidad' },
-      { key: 'metodo_pago',        label: 'Método de pago' },
-      { key: 'estado_suscripcion', label: 'Estado suscripción' },
-      { key: 'precio_mensual',     label: 'Precio mensual' },
-      { key: 'aportes_pendientes', label: 'Aportes pendientes' },
-      { key: 'monto_pendiente',    label: 'Monto pendiente' },
-      { key: 'fecha_alta',         label: 'Fecha alta' },
-    ])
+    const buf = await generarExcel({
+      hoja: 'Alumnos',
+      titulo: 'Listado de alumnos',
+      filas: rows,
+      columnas: [
+        { key: 'nombre_alumno',      label: 'Alumno', ancho: 32 },
+        { key: 'grado',              label: 'Grado' },
+        { key: 'turno',              label: 'Turno' },
+        { key: 'activo',             label: 'Activo' },
+        { key: 'pagador',            label: 'Aportante', ancho: 28 },
+        { key: 'pagador_email',      label: 'Email aportante', ancho: 28 },
+        { key: 'pagador_telefono',   label: 'Teléfono' },
+        { key: 'pagador_dni',        label: 'DNI' },
+        { key: 'aportes_pendientes', label: 'Aportes pendientes', tipo: 'numero' },
+        { key: 'monto_pendiente',    label: 'Monto pendiente', tipo: 'moneda' },
+        { key: 'fecha_alta',         label: 'Fecha alta' },
+      ],
+    })
 
-    return csvResponse(nombreArchivo('alumnos'), csv)
+    return excelResponse(nombreArchivo('alumnos'), buf)
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -239,18 +240,23 @@ export async function GET(
       }
     })
 
-    const csv = toCSV(rows, [
-      { key: 'nombre',                     label: 'Aportante' },
-      { key: 'dni',                        label: 'DNI' },
-      { key: 'email',                      label: 'Email' },
-      { key: 'telefono',                   label: 'Teléfono' },
-      { key: 'cantidad_alumnos',           label: 'Cantidad de alumnos' },
-      { key: 'cantidad_aportes_realizados', label: 'Aportes realizados' },
-      { key: 'total_aportado',             label: 'Total aportado ($)' },
-      { key: 'fecha_alta',                 label: 'Fecha alta' },
-    ])
+    const buf = await generarExcel({
+      hoja: 'Aportantes',
+      titulo: 'Listado de aportantes',
+      filas: rows,
+      columnas: [
+        { key: 'nombre',                      label: 'Aportante', ancho: 30 },
+        { key: 'dni',                         label: 'DNI' },
+        { key: 'email',                       label: 'Email', ancho: 28 },
+        { key: 'telefono',                    label: 'Teléfono' },
+        { key: 'cantidad_alumnos',            label: 'Alumnos a cargo', tipo: 'numero' },
+        { key: 'cantidad_aportes_realizados', label: 'Aportes realizados', tipo: 'numero' },
+        { key: 'total_aportado',              label: 'Total aportado', tipo: 'moneda' },
+        { key: 'fecha_alta',                  label: 'Fecha alta' },
+      ],
+    })
 
-    return csvResponse(nombreArchivo('pagadores'), csv)
+    return excelResponse(nombreArchivo('pagadores'), buf)
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -283,22 +289,24 @@ export async function GET(
       fecha_creacion: fechaCorta(c.created_at),
     }))
 
-    const csv = toCSV(rows, [
-      { key: 'alumno',         label: 'Alumno' },
-      { key: 'grado',          label: 'Grado' },
-      { key: 'turno',          label: 'Turno' },
-      { key: 'pagador',        label: 'Aportante' },
-      { key: 'email_pagador',  label: 'Email aportante' },
-      { key: 'periodo',        label: 'Período' },
-      { key: 'mes',            label: 'Mes' },
-      { key: 'año',            label: 'Año' },
-      { key: 'monto',          label: 'Monto ($)' },
-      { key: 'estado',         label: 'Estado' },
-      { key: 'fecha_creacion', label: 'Fecha generación' },
-    ])
+    const buf = await generarExcel({
+      hoja: 'Aportes esperados',
+      titulo: `Aportes esperados${año ? ` — ${año}` : ''}`,
+      filas: rows,
+      columnas: [
+        { key: 'alumno',         label: 'Alumno', ancho: 32 },
+        { key: 'grado',          label: 'Grado' },
+        { key: 'turno',          label: 'Turno' },
+        { key: 'pagador',        label: 'Aportante', ancho: 28 },
+        { key: 'periodo',        label: 'Período' },
+        { key: 'monto',          label: 'Monto', tipo: 'moneda' },
+        { key: 'estado',         label: 'Estado' },
+        { key: 'fecha_creacion', label: 'Generado el' },
+      ],
+    })
 
     const sufijo = [año, mes].filter(Boolean).join('-')
-    return csvResponse(nombreArchivo('aportes', sufijo), csv)
+    return excelResponse(nombreArchivo('aportes', sufijo), buf)
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -365,24 +373,29 @@ export async function GET(
       anulado_fecha: p.anulado_at ? fechaCorta(p.anulado_at) : '',
     }))
 
-    const csv = toCSV(rows, [
-      { key: 'fecha',             label: 'Fecha' },
-      { key: 'pagador',           label: 'Aportante' },
-      { key: 'email_pagador',     label: 'Email aportante' },
-      { key: 'monto',             label: 'Monto ($)' },
-      { key: 'descuento',         label: 'Descuento' },
-      { key: 'metodo',            label: 'Método' },
-      { key: 'registrado_por',    label: 'Registrado por' },
-      { key: 'referencia_mp',     label: 'Referencia MP' },
-      { key: 'aportes_cubiertos', label: 'Aportes cubiertos' },
-      { key: 'notas',             label: 'Notas' },
-      { key: 'anulado',           label: 'Anulado' },
-      { key: 'motivo_anulacion',  label: 'Motivo anulación' },
-      { key: 'anulado_fecha',     label: 'Fecha anulación' },
-    ])
+    const buf = await generarExcel({
+      hoja: 'Aportes recibidos',
+      titulo: `Aportes recibidos${año ? ` — ${año}` : ''}`,
+      filas: rows,
+      columnas: [
+        { key: 'fecha',             label: 'Fecha' },
+        { key: 'pagador',           label: 'Aportante', ancho: 28 },
+        { key: 'email_pagador',     label: 'Email aportante', ancho: 26 },
+        { key: 'monto',             label: 'Monto', tipo: 'moneda' },
+        { key: 'descuento',         label: 'Descuento', tipo: 'moneda' },
+        { key: 'metodo',            label: 'Medio de pago' },
+        { key: 'aportes_cubiertos', label: 'Aportes cubiertos', ancho: 40 },
+        { key: 'referencia_mp',     label: 'Referencia' },
+        { key: 'registrado_por',    label: 'Registrado por' },
+        { key: 'notas',             label: 'Notas', ancho: 30 },
+        { key: 'anulado',           label: 'Anulado' },
+        { key: 'motivo_anulacion',  label: 'Motivo anulación', ancho: 30 },
+        { key: 'anulado_fecha',     label: 'Fecha anulación' },
+      ],
+    })
 
     const sufijo = [año, mes].filter(Boolean).join('-')
-    return csvResponse(nombreArchivo('pagos', sufijo), csv)
+    return excelResponse(nombreArchivo('pagos', sufijo), buf)
   }
 
   return new Response(`Tipo de exportación inválido: ${tipo}`, { status: 400 })
