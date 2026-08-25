@@ -272,14 +272,60 @@ export async function cancelarSuscripcionMP(preapprovalId: string): Promise<bool
 
 // ── Validar webhook de MP ─────────────────────────────────────────────────────
 
-export function validarWebhookMP(
+/**
+ * Verifica que la notificación venga realmente de MercadoPago.
+ *
+ * MP firma cada webhook con HMAC-SHA256 sobre el manifest:
+ *     id:<data.id>;request-id:<x-request-id>;ts:<ts>;
+ * y lo envía en el header `x-signature` como `ts=...,v1=<hash>`.
+ *
+ * Devuelve:
+ *   'ok'          → firma válida
+ *   'sin-secreto' → no hay MP_WEBHOOK_SECRET configurado (no podemos validar)
+ *   'invalida'    → la firma no coincide o faltan headers
+ */
+export async function validarWebhookMP(
   xSignature: string | null,
   xRequestId: string | null,
   dataId: string | null,
-  secret: string
-): boolean {
-  if (!xSignature || !xRequestId || !dataId) return false
-  // Validación de firma HMAC-SHA256 de MP
-  // Se activa cuando se configure el webhook secret en el dashboard de MP
-  return true // TODO: implementar verificación HMAC cuando esté en producción
+): Promise<'ok' | 'sin-secreto' | 'invalida'> {
+  const secret = process.env.MP_WEBHOOK_SECRET
+  if (!secret) return 'sin-secreto'
+  if (!xSignature || !dataId) return 'invalida'
+
+  // x-signature: "ts=1704908010,v1=618c8534..."
+  const partes = Object.fromEntries(
+    xSignature.split(',').map((p) => {
+      const [k, ...v] = p.trim().split('=')
+      return [k.trim(), v.join('=').trim()]
+    }),
+  ) as { ts?: string; v1?: string }
+
+  if (!partes.ts || !partes.v1) return 'invalida'
+
+  // MP normaliza el id a minúsculas cuando es alfanumérico
+  const idNorm = String(dataId).toLowerCase()
+  const manifest = `id:${idNorm};request-id:${xRequestId ?? ''};ts:${partes.ts};`
+
+  try {
+    const enc = new TextEncoder()
+    const key = await crypto.subtle.importKey(
+      'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+    )
+    const sig = await crypto.subtle.sign('HMAC', key, enc.encode(manifest))
+    const calculado = Array.from(new Uint8Array(sig))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+
+    // Comparación en tiempo constante
+    if (calculado.length !== partes.v1.length) return 'invalida'
+    let diff = 0
+    for (let i = 0; i < calculado.length; i++) {
+      diff |= calculado.charCodeAt(i) ^ partes.v1.charCodeAt(i)
+    }
+    return diff === 0 ? 'ok' : 'invalida'
+  } catch (err) {
+    console.error('[MP webhook] error validando firma:', err)
+    return 'invalida'
+  }
 }

@@ -3,3 +3,6 @@
 node_modules/
 .next/
 out/
+
+# Backups: contienen datos personales de alumnos
+backups/

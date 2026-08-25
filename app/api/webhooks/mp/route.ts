@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { wspConfirmacionPago, wspDebitoAutomatico } from '@/lib/twilio'
 import { enviarRecibo } from '@/lib/email'
 import { formatMes } from '@/lib/utils'
+import { validarWebhookMP } from '@/lib/mp'
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,6 +38,24 @@ export async function POST(req: NextRequest) {
 
     if (!esPago && !esSuscripcion) {
       return NextResponse.json({ ok: true })
+    }
+
+    // Verificar que la notificación venga realmente de MercadoPago.
+    // Si MP_WEBHOOK_SECRET no está configurado, seguimos (los datos igual se
+    // re-consultan contra la API de MP), pero lo dejamos avisado en los logs.
+    const firma = await validarWebhookMP(
+      req.headers.get('x-signature'),
+      req.headers.get('x-request-id'),
+      dataId ?? null,
+    )
+    if (firma === 'invalida') {
+      console.error('[webhook/mp] firma inválida — notificación rechazada', {
+        type: rawType, dataId,
+      })
+      return NextResponse.json({ error: 'Firma inválida' }, { status: 401 })
+    }
+    if (firma === 'sin-secreto') {
+      console.warn('[webhook/mp] MP_WEBHOOK_SECRET no configurado: no se validó la firma')
     }
 
     const supabase = createAdminClient()
