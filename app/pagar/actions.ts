@@ -31,6 +31,34 @@ export async function getDatosTransferencia(): Promise<DatosTransferencia> {
   }
 }
 
+export type Sugerencia = { id: string; nombre: string; grado: string; turno: string | null }
+
+/**
+ * Sugerencias en vivo mientras el aportante escribe (tipo buscador de Google).
+ * Consulta liviana: solo los campos que se muestran, máximo 6 resultados.
+ */
+export async function sugerirAlumnos(term: string): Promise<Sugerencia[]> {
+  const t = (term ?? '').trim()
+  if (t.length < 2) return []
+
+  const admin = createAdminClient()
+  const soloDigitos = t.replace(/\D/g, '')
+  const esDni = soloDigitos.length >= 3 && soloDigitos === t.replace(/[\s.]/g, '')
+
+  let q = admin
+    .from('alumnos')
+    .select('id, nombre, grado, turno')
+    .eq('activo', true)
+    .order('nombre')
+    .limit(6)
+
+  q = esDni ? q.like('dni', `${soloDigitos}%`) : q.ilike('nombre', `%${t}%`)
+
+  const { data, error } = await q
+  if (error) { console.error('[sugerirAlumnos]', error); return [] }
+  return (data ?? []) as Sugerencia[]
+}
+
 export type AlumnoParaAporte = {
   id: string
   nombre: string
@@ -95,6 +123,35 @@ export async function buscarAlumnoParaAporte(
     })
   }
   return { alumnos }
+}
+
+/** Trae un alumno listo para aportar a partir de su id (al elegir una sugerencia). */
+export async function getAlumnoParaAportePorId(
+  alumnoId: string,
+): Promise<{ alumno?: AlumnoParaAporte; error?: string }> {
+  const admin = createAdminClient()
+  const { data: a } = await admin
+    .from('alumnos')
+    .select('id, nombre, grado, turno, pagador_id, activo')
+    .eq('id', alumnoId)
+    .maybeSingle()
+
+  if (!a || a.activo === false) return { error: 'No encontramos al alumno.' }
+
+  const cfg = await getPreciosConfig()
+  const cantidadFamilia = await cantidadFamiliaActiva(a.pagador_id)
+  return {
+    alumno: {
+      id: a.id,
+      nombre: a.nombre,
+      grado: a.grado,
+      turno: a.turno,
+      montoMensual: montoMensual(cfg, cantidadFamilia),
+      montoAnual: cfg.anual,
+      esFamilia: cantidadFamilia >= 2,
+      cantidadFamilia,
+    },
+  }
 }
 
 /**

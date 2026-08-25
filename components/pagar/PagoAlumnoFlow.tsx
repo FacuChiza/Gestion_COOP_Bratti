@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useRef } from 'react'
 import { Search, ArrowRight, CreditCard, GraduationCap, Loader2, ChevronLeft, Repeat, Building2, Copy, Check, HandCoins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { formatMonto } from '@/lib/utils'
-import { buscarAlumnoParaAporte, crearPagoMensualAlumno, crearPagoAnualAlumno, crearDebitoAlumno, crearPagoLibreAlumno, type AlumnoParaAporte, type DatosTransferencia } from '@/app/pagar/actions'
+import { buscarAlumnoParaAporte, crearPagoMensualAlumno, crearPagoAnualAlumno, crearDebitoAlumno, crearPagoLibreAlumno, sugerirAlumnos, getAlumnoParaAportePorId, type Sugerencia, type AlumnoParaAporte, type DatosTransferencia } from '@/app/pagar/actions'
 
 export function PagoAlumnoFlow({ transferencia }: { transferencia: DatosTransferencia }) {
   const [term, setTerm] = useState('')
@@ -23,6 +23,34 @@ export function PagoAlumnoFlow({ transferencia }: { transferencia: DatosTransfer
   const [montoLibre, setMontoLibre] = useState('')
   const [mostrarTransfer, setMostrarTransfer] = useState(false)
   const [copiado, setCopiado] = useState<string | null>(null)
+  const [sugerencias, setSugerencias] = useState<Sugerencia[]>([])
+  const [mostrarSug, setMostrarSug] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Sugerencias en vivo mientras escribe (con debounce para no saturar).
+  useEffect(() => {
+    if (elegido) return
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    const t = term.trim()
+    if (t.length < 2) { setSugerencias([]); return }
+    debounceRef.current = setTimeout(async () => {
+      const res = await sugerirAlumnos(t)
+      setSugerencias(res)
+      setMostrarSug(true)
+    }, 250)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [term, elegido])
+
+  const elegirSugerencia = (s: Sugerencia) => {
+    setMostrarSug(false)
+    setSugerencias([])
+    setError(null)
+    startBuscar(async () => {
+      const r = await getAlumnoParaAportePorId(s.id)
+      if (r.error) { setError(r.error); return }
+      if (r.alumno) setElegido(r.alumno)
+    })
+  }
 
   const buscar = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -83,6 +111,7 @@ export function PagoAlumnoFlow({ transferencia }: { transferencia: DatosTransfer
     setMostrarDebito(false); setDebEmail(''); setDebTel('')
     setMostrarTransfer(false)
     setMostrarLibre(false); setMontoLibre('')
+    setSugerencias([]); setMostrarSug(false); setTerm('')
   }
 
   // ── Card del alumno elegido → pagar ─────────────────────────
@@ -364,12 +393,39 @@ export function PagoAlumnoFlow({ transferencia }: { transferencia: DatosTransfer
             id="term"
             value={term}
             onChange={(e) => setTerm(e.target.value)}
-            placeholder="Ej: 45123456 o Juan Pérez"
+            onFocus={() => setMostrarSug(true)}
+            placeholder="Empezá a escribir el nombre o el DNI…"
             className="pl-9"
             autoComplete="off"
             required
           />
+
+          {/* Sugerencias en vivo */}
+          {mostrarSug && sugerencias.length > 0 && (
+            <div className="absolute z-20 left-0 right-0 top-full mt-1 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+              {sugerencias.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => elegirSugerencia(s)}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-slate-900 truncate">{s.nombre}</span>
+                    <span className="block text-xs text-slate-500">
+                      {s.grado}{s.turno ? ` · ${s.turno}` : ''}
+                    </span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 text-slate-300 shrink-0" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+        <p className="text-xs text-slate-400">
+          Tocá el nombre que aparece abajo para continuar.
+        </p>
       </div>
 
       {error && (
